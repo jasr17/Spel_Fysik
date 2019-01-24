@@ -18,17 +18,11 @@ float deltaTime = 0;
 Object sword;
 Terrain terrain;
 
-struct TriangleVertex
-{
-	float x = 0, y = 0, z = 0;
-	float u = 0, v = 0;
-};
-
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld,mView,mPerspective;
+	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective;
 };
 struct LightData {
-	XMFLOAT4 pos = XMFLOAT4(0,1,0,0);
+	XMFLOAT4 pos = XMFLOAT4(0,2,0,0);
 	XMFLOAT4 color = XMFLOAT4(1,1,1,1);//.a is intensity
 } light;
 XMFLOAT3 cameraPosition = XMFLOAT3(0,2,-3);
@@ -52,17 +46,10 @@ ID3D11DeviceContext* gDeviceContext = nullptr;
 ID3D11RenderTargetView* gBackbufferRTV = nullptr;
 //depth buffer
 ID3D11DepthStencilView* gDepthStencilView = nullptr;
-// a resource to store Vertices in the GPU
-ID3D11InputLayout* gVertexLayout = nullptr;
-
 // a resource to store the matrix in the GPU
 ID3D11Buffer* gMatrixBuffer = nullptr;
 ID3D11Buffer* gLightBuffer = nullptr;
 ID3D11Buffer* gCameraBuffer = nullptr;
-// resources that represent shaders
-ID3D11VertexShader* gVertexShader = nullptr;
-ID3D11GeometryShader* gGeometryShader = nullptr;
-ID3D11PixelShader* gPixelShader = nullptr;
 
 struct ShaderSet {
 protected:
@@ -251,159 +238,6 @@ public:
 ShaderSet shader_object;
 ShaderSet shader_terrain;
 
-HRESULT CreateShaders()
-{
-	// Binary Large OBject (BLOB), for compiled shader, and errors.
-	ID3DBlob* pVS = nullptr;
-	ID3DBlob* errorBlob = nullptr;
-
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
-	HRESULT result = D3DCompileFromFile(
-		L"Effects/Vertex.hlsl", // filename
-		nullptr,		// optional macros
-		nullptr,		// optional include files
-		"VS_main",		// entry point
-		"vs_5_0",		// shader model (target)
-		D3DCOMPILE_DEBUG,	// shader compile options (DEBUGGING)
-		0,				// IGNORE...DEPRECATED.
-		&pVS,			// double pointer to ID3DBlob		
-		&errorBlob		// pointer for Error Blob messages.
-	);
-
-	// compilation failed?
-	if (FAILED(result))
-	{
-		if (errorBlob)
-		{
-			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-			// release "reference" to errorBlob interface object
-			errorBlob->Release();
-		}
-		if (pVS)
-			pVS->Release();
-		return result;
-	}
-
-	gDevice->CreateVertexShader(
-		pVS->GetBufferPointer(), 
-		pVS->GetBufferSize(), 
-		nullptr, 
-		&gVertexShader
-	);
-	
-	// create input layout (verified using vertex shader)
-	// Press F1 in Visual Studio with the cursor over the datatype to jump
-	// to the documentation online!
-	// please read:
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb205117(v=vs.85).aspx
-	D3D11_INPUT_ELEMENT_DESC inputDesc[] = {
-		{
-			"Position",		// "semantic" name in shader
-			0,				// "semantic" index (not used)
-			DXGI_FORMAT_R32G32B32_FLOAT, // size of ONE element (3 floats)
-			0,							 // input slot
-			0,							 // offset of first element
-			D3D11_INPUT_PER_VERTEX_DATA, // specify data PER vertex
-			0							 // used for INSTANCING (ignore)
-		},
-		{
-			"TexCoordinate",
-			0,
-			DXGI_FORMAT_R32G32_FLOAT,
-			0,
-			12,
-			D3D11_INPUT_PER_VERTEX_DATA,
-			0
-		},
-		{
-			"Normal",
-			0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			20,
-			D3D11_INPUT_PER_VERTEX_DATA,
-			0
-		}
-	};
-
-	gDevice->CreateInputLayout(inputDesc, ARRAYSIZE(inputDesc), pVS->GetBufferPointer(), pVS->GetBufferSize(), &gVertexLayout);
-
-	// we do not need anymore this COM object, so we release it.
-	pVS->Release();
-
-	//create geometry shader
-	ID3DBlob* pGS = nullptr;
-	if (errorBlob) errorBlob->Release();
-	errorBlob = nullptr;
-
-	result = D3DCompileFromFile(
-		L"Effects/Geometry.hlsl",
-		nullptr,
-		nullptr,
-		"GS_main",
-		"gs_5_0",
-		D3DCOMPILE_DEBUG,
-		0,
-		&pGS,
-		&errorBlob
-	);
-
-	// compilation failed?
-	if (FAILED(result))
-	{
-		if (errorBlob)
-		{
-			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-			// release "reference" to errorBlob interface object
-			errorBlob->Release();
-		}
-		if (pGS)
-			pGS->Release();
-		return result;
-	}
-
-	gDevice->CreateGeometryShader(pGS->GetBufferPointer(),pGS->GetBufferSize(),nullptr,&gGeometryShader);
-
-	pGS->Release();
-
-	//create pixel shader
-	ID3DBlob* pPS = nullptr;
-	if (errorBlob) errorBlob->Release();
-	errorBlob = nullptr;
-
-	result = D3DCompileFromFile(
-		L"Effects/Fragment.hlsl", // filename
-		nullptr,		// optional macros
-		nullptr,		// optional include files
-		"PS_main",		// entry point
-		"ps_5_0",		// shader model (target)
-		D3DCOMPILE_DEBUG,	// shader compile options
-		0,				// effect compile options
-		&pPS,			// double pointer to ID3DBlob		
-		&errorBlob			// pointer for Error Blob messages.
-	);
-
-	// compilation failed?
-	if (FAILED(result))
-	{
-		if (errorBlob)
-		{
-			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-			// release "reference" to errorBlob interface object
-			errorBlob->Release();
-		}
-		if (pPS)
-			pPS->Release();
-		return result;
-	}
-
-	gDevice->CreatePixelShader(pPS->GetBufferPointer(), pPS->GetBufferSize(), nullptr, &gPixelShader);
-	// we do not need anymore this COM object, so we release it.
-	pPS->Release();
-
-	return S_OK;
-}
-
 void CreateLightBuffer() {
 	D3D11_BUFFER_DESC desc;
 	memset(&desc, 0, sizeof(desc));
@@ -460,11 +294,10 @@ void CreateCameraBuffer() {
 	desc.ByteWidth = sizeof(XMFLOAT4);
 
 	gDevice->CreateBuffer(&desc, nullptr, &gCameraBuffer);
-	gDeviceContext->PSSetConstantBuffers(2, 1, &gCameraBuffer);
+	gDeviceContext->PSSetConstantBuffers(1, 1, &gCameraBuffer);
 }
 
 void updateMatrixBuffer(float4x4 worldMat) {
-	XMMATRIX mWorld = worldMat;
 
 	XMFLOAT3 at(0, 0, 0);
 	XMFLOAT3 up(0, 1, 0);
@@ -473,7 +306,8 @@ void updateMatrixBuffer(float4x4 worldMat) {
 	XMMATRIX mPerspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.1, 200);
 
 	WorldViewPerspectiveMatrix mat;
-	mat.mWorld = XMMatrixTranspose(mWorld);
+	mat.mWorld = XMMatrixTranspose(worldMat);
+	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
 	mat.mView = XMMatrixTranspose(mView);
 	mat.mPerspective = XMMatrixTranspose(mPerspective);
 
@@ -518,8 +352,6 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		SetViewport(); //3. Sätt viewport
 
-		CreateShaders(); //4. Skapa vertex- och pixel-shaders
-
 		CreateCameraBuffer();
 
 		CreateLightBuffer();
@@ -529,7 +361,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		sword.loadMesh("Meshes/Sword");
 		sword.setScale(float3(0.1,0.1,0.1));
 
-		terrain.create(XMINT2(100,100),4,1,L"Images/heightMap1.jpg");
+		terrain.create(XMINT2(100,100),4,2,L"Images/heightMap1.jpg");
 
 		shader_object.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex_Terrain.hlsl", L"Effects/Geometry_Terrain.hlsl", L"Effects/Fragment_Terrain.hlsl");
@@ -566,11 +398,6 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		gMatrixBuffer->Release();
 		gLightBuffer->Release();
-
-		gVertexLayout->Release();
-		gVertexShader->Release();
-		gGeometryShader->Release();
-		gPixelShader->Release();
 
 		gDepthStencilView->Release();
 		gBackbufferRTV->Release();

@@ -130,59 +130,35 @@ inline Vertex ** Terrain::applyHeightToGrid(Vertex ** grid, const wchar_t* fileP
 }
 inline Vertex ** Terrain::configureNormals(Vertex ** grid)
 {
-	//int** gridCount = new int*[tileCount.x+1];
-	//for (int xx = 0; xx < tileCount.x+1; xx++)
-	//{
-	//	gridCount[xx] = new int[tileCount.y+1];
-	//	for (int yy = 0; yy < tileCount.y+1; yy++)
-	//	{
-	//		gridCount[xx][yy] = 0;
-	//	}
-	//}
-	//int index = 0;
-	//for (int yy = 0; yy < tileCount.y; yy++)
-	//{
-	//	for (int xx = 0; xx < tileCount.x; xx++)
-	//	{
-	//		//tri1
-	//		float3 n1 = (grid[xx + 0][yy + 0].position - grid[xx + 1][yy + 1].position).Cross(grid[xx + 0][yy + 1].position - grid[xx + 1][yy + 1].position);
-	//		grid[xx + 1][yy + 1].normal += n1; gridCount[xx + 1][yy + 1]++;
-	//		grid[xx + 0][yy + 0].normal += n1; gridCount[xx + 0][yy + 0]++;
-	//		grid[xx + 0][yy + 1].normal += n1; gridCount[xx + 0][yy + 1]++;
-	//		//tri2
-	//		float3 n2 = (grid[xx + 1][yy + 1].position - grid[xx + 0][yy + 0].position).Cross(grid[xx + 1][yy + 0].position - grid[xx + 0][yy + 0].position);
-	//		grid[xx + 0][yy + 0].normal += n2; gridCount[xx + 0][yy + 0]++;
-	//		grid[xx + 1][yy + 1].normal += n2; gridCount[xx + 1][yy + 1]++;
-	//		grid[xx + 1][yy + 0].normal += n2; gridCount[xx + 1][yy + 0]++;
-	//	}
-	//}
-	//for (int yy = 0; yy < tileCount.y; yy++)
-	//{
-	//	for (int xx = 0; xx < tileCount.x; xx++)
-	//	{
-	//		grid[xx + 1][yy + 1].normal /= gridCount[xx + 1][yy + 1];
-	//		grid[xx + 0][yy + 0].normal /= gridCount[xx + 0][yy + 0];
-	//		grid[xx + 0][yy + 1].normal /= gridCount[xx + 0][yy + 1];
-
-	//		grid[xx + 0][yy + 0].normal /= gridCount[xx + 0][yy + 0];
-	//		grid[xx + 1][yy + 1].normal /= gridCount[xx + 1][yy + 1];
-	//		grid[xx + 1][yy + 0].normal /= gridCount[xx + 1][yy + 0];
-	//	}
-	//}
-	//for (int i = 0; i < tileCount.y+1; i++)
-	//{
-	//	delete[] gridCount[i];
-	//}
-	//delete[] gridCount;
-
-	for (int yy = 1; yy < tileCount.y; yy++)
+	//sum all normals
+	int index = 0;
+	float3 normal;
+	for (int yy = 0; yy < tileCount.y; yy++)
 	{
-		for (int xx = 1; xx < tileCount.x; xx++)
+		for (int xx = 0; xx < tileCount.x; xx++)
 		{
-
+			//tri1
+			normal = (grid[xx + 0][yy + 0].position - grid[xx + 1][yy + 1].position).Cross(grid[xx + 0][yy + 1].position - grid[xx + 1][yy + 1].position);
+			normal.Normalize();
+			grid[xx + 1][yy + 1].normal += normal;
+			grid[xx + 0][yy + 0].normal += normal;
+			grid[xx + 0][yy + 1].normal += normal;
+			//tri2
+			normal = (grid[xx + 1][yy + 1].position - grid[xx + 0][yy + 0].position).Cross(grid[xx + 1][yy + 0].position - grid[xx + 0][yy + 0].position);
+			normal.Normalize();
+			grid[xx + 0][yy + 0].normal += normal;
+			grid[xx + 1][yy + 1].normal += normal;
+			grid[xx + 1][yy + 0].normal += normal;
 		}
 	}
-
+	//normalize all normals
+	for (int yy = 0; yy < tileCount.y+1; yy++)
+	{
+		for (int xx = 0; xx < tileCount.x+1; xx++)
+		{
+			grid[xx][yy].normal.Normalize();
+		}
+	}
 	return grid;
 }
 inline void Terrain::createBuffers()

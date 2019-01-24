@@ -25,7 +25,7 @@ float4 PS_main(GeoOut input) : SV_Target
 {
     float3 normal = input.Normal;
     //ambient
-    float3 ambient = float3(0.0,0.0,0.0);
+    float3 ambient = float3(0.2,0.2,0.2);
     //diffuse
     float distToLight = length(lightPos.xyz - input.PosW.xyz);
     float3 toLight = normalize(lightPos.xyz - input.PosW.xyz);
@@ -42,7 +42,7 @@ float4 PS_main(GeoOut input) : SV_Target
     float3 white = float3(1, 1, 1);
     float slope = clamp(dot(float3(0, 1, 0), normal), 0, 1);
     float3 terrainColor;
-    terrainColor = lerp(lerp(brown, grey, heightDiffuse), heightDiffuse > 0.4 ? lerp(green, white, sqrt((heightDiffuse - 0.4) / 0.6)) : green, pow(slope, 6));
+    terrainColor = lerp(lerp(brown, grey, heightDiffuse), heightDiffuse > 0.4 ? lerp(green, white, sqrt((heightDiffuse - 0.4) / 0.6)) : green, pow(slope, 20));
 
     //return shadowedTextureColor
     float3 finalColor = terrainColor * ambient + (terrainColor * lightColor.rgb * diffuse * lightColor.a + terrainColor * specular) / pow(distToLight,0); //ambient, diffuse, no specular
