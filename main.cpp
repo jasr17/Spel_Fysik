@@ -3,9 +3,9 @@
 //	   - modified by FLL
 //--------------------------------------------------------------------------------------
 #include <windows.h>
+#include <iostream>
 #include <time.h>
 #include <math.h>
-#include <ctime>
 
 #include "Object.h"
 #include "Terrain.h"
@@ -317,7 +317,7 @@ void updateMatrixBuffer(float4x4 worldMat) {
 void Render()
 {
 	// clear the back buffer to a deep blue
-	float clearColor[] = { 0.3, 0.3, 0.3, 1 };
+	float clearColor[] = { 0.1, 0.1, 0.1, 1 };
 
 	// use DeviceContext to talk to the API
 	gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
@@ -368,10 +368,10 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		ShowWindow(wndHandle, nCmdShow);
 
+		clock_t time;
 		while (WM_QUIT != msg.message)
 		{
-			LARGE_INTEGER preTime;
-			QueryPerformanceCounter(&preTime);
+			time = clock();
 			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 			{
 				TranslateMessage(&msg);
@@ -391,9 +391,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
 			}
-			LARGE_INTEGER postTime;
-			QueryPerformanceCounter(&postTime);
-			deltaTime = 2*(postTime.QuadPart - preTime.QuadPart)/pow(10,7);
+			time = clock() - time;
+			deltaTime = time/1000.0f;
 		}
 
 		gMatrixBuffer->Release();

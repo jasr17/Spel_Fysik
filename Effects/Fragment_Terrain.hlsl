@@ -10,7 +10,7 @@ cbuffer lightBuffer : register(b0)
     float4 lightPos;
     float4 lightColor;
 };
-cbuffer cameraBuffer : register(b2)
+cbuffer cameraBuffer : register(b1)
 {
     float4 camPos;
 }
@@ -31,9 +31,9 @@ float4 PS_main(GeoOut input) : SV_Target
     float3 toLight = normalize(lightPos.xyz - input.PosW.xyz);
     float diffuse = clamp(dot(normal, toLight), 0, 1);
     //specular
-    float3 toCam = normalize(camPos.xyz-input.PosW.xyz);
+    float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
     float3 reflekt = normalize(2 * dot(normal, toLight) * normal - toLight);
-    float specular = clamp(pow(clamp(dot(reflekt, toCam), 0, 1), 20),0,1);
+    float specular = pow(clamp(dot(reflekt, toCam), 0, 1), 20);
     //resource color
     float heightDiffuse = clamp(input.PosW.y / 1, 0, 1);
     float3 green = float3(77.0f / 255, 168.0f / 255, 77.0f / 255);
@@ -46,6 +46,6 @@ float4 PS_main(GeoOut input) : SV_Target
 
     //return shadowedTextureColor
     float3 finalColor = terrainColor * ambient + (terrainColor * lightColor.rgb * diffuse * lightColor.a + terrainColor * specular) / pow(distToLight,0); //ambient, diffuse, no specular
-    finalColor = min(finalColor, float3(1, 1, 1));
+    finalColor = clamp(finalColor, float3(0, 0, 0), float3(1, 1, 1));
     return float4(finalColor, 1);
 }

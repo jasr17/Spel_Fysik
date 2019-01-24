@@ -111,7 +111,7 @@ inline void Object::draw()
 	UINT strides = sizeof(Vertex);
 	UINT offset = 0;
 	gDeviceContext->IASetVertexBuffers(0,1,&vertexBuffer,&strides,&offset);
-	gDeviceContext->PSSetConstantBuffers(1,1,&materialBuffer);
+	gDeviceContext->PSSetConstantBuffers(2,1,&materialBuffer);
 
 	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
