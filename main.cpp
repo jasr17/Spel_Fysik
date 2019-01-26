@@ -8,6 +8,7 @@
 #include <math.h>
 
 #include <Keyboard.h>
+#include <Mouse.h>
 
 #include "Object.h"
 #include "Terrain.h"
@@ -23,6 +24,8 @@ Object ball;
 Terrain terrain;
 
 std::unique_ptr<DirectX::Keyboard> m_keyboard;
+std::unique_ptr<Mouse> mouse = std::make_unique<Mouse>();
+float2 mousePos;
 
 struct WorldViewPerspectiveMatrix {
 	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective;
@@ -380,6 +383,9 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 {
 	MSG msg = { 0 };
 	HWND wndHandle = InitWindow(hInstance); //1. Skapa fönster
+	
+	mouse->SetWindow(wndHandle);
+	mouse->SetVisible(false);
 
 	srand(time(NULL));
 
@@ -429,12 +435,35 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 			}
 			else
 			{
+				//Mouse
+				Mouse::State state = mouse->GetState();
+				Mouse::ButtonStateTracker tracker; tracker.Update(state);
+				if (state.leftButton) {
+					//do something every frame
+				}
+				if (tracker.leftButton == Mouse::ButtonStateTracker::PRESSED) {
+					//do something once
+				}
+				//camera rotation with mouse
+				RECT r; GetWindowRect(wndHandle, &r);//get window size
+
+				POINT newPos;//get cursor position
+				GetCursorPos(&newPos);
+
+				float2 diff = float2(newPos.x, newPos.y) - mousePos;
+
+				SetCursorPos((r.right + r.left) / 2, (r.bottom + r.top) / 2);//set cursor to middle of window
+				GetCursorPos(&newPos);
+				mousePos = float2(newPos.x,newPos.y);//save cursor position
+
+				cameraRotation += float2(diff.y,diff.x)*0.002;//add mouse rotation
+				//keyboard
 				Keyboard::State kb = m_keyboard->GetState();
 				//close window
 				if (kb.Escape) {
 					break;
 				}
-				//cameraRotation
+				//cameraRotation with arrow keys
 				float rotSpeed = 2 * deltaTime;
 				if (kb.Up) {
 					cameraRotation.x -= rotSpeed;
@@ -448,17 +477,19 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				if (kb.Right) {
 					cameraRotation.y += rotSpeed;
 				}
+				//clamp rotation
 				if (cameraRotation.x > (3.14 / 2)*0.9) cameraRotation.x = (3.14 / 2)*0.9;
 				if (cameraRotation.x < (-3.14 / 2)*0.9) cameraRotation.x = (-3.14 / 2)*0.9;
+				//calc rotation matrix to use later
 				float4x4 rotMat = float4x4::CreateRotationX(cameraRotation.x)*float4x4::CreateRotationY(cameraRotation.y);
 				cameraForward = XMVector3Transform(float4(0,0,1,1),rotMat);
-				//cameraMovement
+				//camera movement
 				float speed = 0.01;
 				float jumpForce = 0.01;
 				float3 left = cameraForward.Cross(float3(0,1,0));
 				float3 forward = XMVector3Transform(float4(0,0,1,1),float4x4::CreateRotationY(cameraRotation.y));
 				left.Normalize();
-				if (kb.LeftShift) speed *= 2;
+				if (kb.LeftShift) speed *= 2;//sprint
 				if (kb.W) {
 					acceleration += forward * speed;
 				}
@@ -471,30 +502,31 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				if (kb.D) {
 					acceleration -= left * speed;
 				}
-				if (kb.Space && grounded) {
+				if (kb.Space && grounded) {//jump
 					//acceleration += float3(0,1,0)*jumpForce;
 					velocity.y = jumpForce;
 					grounded = false;
 				}
-				if(!grounded)acceleration += gravityDirection * gravityForce;
-				velocity += acceleration * deltaTime;
-				acceleration = float3(0,0,0);
+				if(!grounded)acceleration += gravityDirection * gravityForce;//dont apply gravity if on ground
+				velocity += acceleration * deltaTime;//update velocity
+				acceleration = float3(0,0,0);//reset acceleration
 				//collision
-				float3 p = cameraPosition + velocity;
-				float hy = terrain.getHeightOfTerrainFromCoordinates(p.x, p.z);
-				if (p.y < hy) {
-					velocity.y += (hy - p.y)*deltaTime*0.2;
+				float3 nextPos = cameraPosition + velocity;
+				float hy = terrain.getHeightOfTerrainFromCoordinates(nextPos.x, nextPos.z);
+				if (nextPos.y < hy) {//if below terrain then add force up
+					velocity.y += (hy - nextPos.y)*deltaTime*0.2;
 					grounded = true;
 				}
 				else grounded = false;
 
-				cameraPosition += velocity;
+				cameraPosition += velocity;//update position
+				//slowdown velocity
 				float vy = velocity.y;
 				velocity -= velocity * 10 * deltaTime;
 				if(vy < 0)velocity.y = vy;
-				if (velocity.Length() < 0.000001)velocity = float3(0,0,0);
+				if (velocity.Length() < 0.000001)velocity = float3(0,0,0);//this code stops the up and down jittering
 
-				//rotate plane
+				//rotate
 				rotation += deltaTime*XM_2PI*0.25*(1.0f/4);
 				//update lightdata buffer
 				gDeviceContext->UpdateSubresource(gLightBuffer, 0, 0, &lights, 0, 0);
@@ -565,14 +597,26 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 		Keyboard::ProcessMessage(message, wParam, lParam);
 		//Mouse::ProcessMessage(message, wParam, lParam);
 		break;
-	case WM_MOUSEHOVER:
-		//Mouse::ProcessMessage(message, wParam, lParam);
-		break;
 	case WM_KEYDOWN:
 	case WM_SYSKEYDOWN:
 	case WM_KEYUP:
 	case WM_SYSKEYUP:
 		Keyboard::ProcessMessage(message, wParam, lParam);
+		break;
+
+	case WM_INPUT:
+	case WM_MOUSEMOVE:
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_RBUTTONDOWN:
+	case WM_RBUTTONUP:
+	case WM_MBUTTONDOWN:
+	case WM_MBUTTONUP:
+	case WM_MOUSEWHEEL:
+	case WM_XBUTTONDOWN:
+	case WM_XBUTTONUP:
+	case WM_MOUSEHOVER:
+		Mouse::ProcessMessage(message, wParam, lParam);
 		break;
 	}
 
