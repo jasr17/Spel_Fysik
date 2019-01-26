@@ -7,6 +7,8 @@
 #include <time.h>
 #include <math.h>
 
+#include <Keyboard.h>
+
 #include "Object.h"
 #include "Terrain.h"
 
@@ -15,17 +17,45 @@
 
 float deltaTime = 0;
 
+Array<float3>swordPositions(10);
 Object sword;
+Object ball;
 Terrain terrain;
+
+std::unique_ptr<DirectX::Keyboard> m_keyboard;
 
 struct WorldViewPerspectiveMatrix {
 	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective;
 };
 struct LightData {
-	XMFLOAT4 pos = XMFLOAT4(0,2,0,0);
-	XMFLOAT4 color = XMFLOAT4(1,1,1,1);//.a is intensity
-} light;
-XMFLOAT3 cameraPosition = XMFLOAT3(0,2,-3);
+	const float4 lightCount = float4(10, 0, 0,0);
+	float4 pos[10];
+	float4 color[10];//.a is intensity
+	float random(float min, float max) {
+		return min + ((float)(rand() % 1000) / 1000)*(max - min);
+	}
+	void randomize() {
+		for (int i = 0; i < lightCount.x; i++)
+		{
+			pos[i] = float4(random(-5, 5), random(2, 6), random(-5, 5), 1);
+			color[i] = float4(random(0, 1), random(0, 1), random(0, 1), 0);
+			color[i].Normalize();
+			color[i].w = random(5,10);
+		}
+	}
+	LightData() {
+
+	}
+} lights;
+//player variables
+bool grounded = false;
+float gravityForce = 0.005;
+float3 gravityDirection = float3(0,-1,0);
+float3 acceleration = float3(0,0,0);
+float3 velocity = float3(0,0,0);
+float3 cameraPosition = float3(0,3,0);
+float3 cameraForward = float3(0,-1,0);
+float2 cameraRotation = float2(0,0);
 float rotation = 0;
 
 HWND InitWindow(HINSTANCE hInstance);
@@ -249,7 +279,7 @@ void CreateLightBuffer() {
 	desc.ByteWidth = sizeof(LightData);
 
 	D3D11_SUBRESOURCE_DATA data;
-	data.pSysMem = &light;
+	data.pSysMem = &lights;
 
 	gDevice->CreateBuffer(&desc, &data, &gLightBuffer);
 	gDeviceContext->PSSetConstantBuffers(0, 1, &gLightBuffer);
@@ -299,11 +329,12 @@ void CreateCameraBuffer() {
 
 void updateMatrixBuffer(float4x4 worldMat) {
 
-	XMFLOAT3 at(0, 0, 0);
+	float3 camPos = cameraPosition + float3(0, 0.5, 0);
+	XMFLOAT3 at = cameraPosition+cameraForward;
 	XMFLOAT3 up(0, 1, 0);
-	XMMATRIX mView = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
+	XMMATRIX mView = XMMatrixLookAtLH(XMLoadFloat3(&camPos), XMLoadFloat3(&at), XMLoadFloat3(&up));
 
-	XMMATRIX mPerspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.1, 200);
+	XMMATRIX mPerspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 200);
 
 	WorldViewPerspectiveMatrix mat;
 	mat.mWorld = XMMatrixTranspose(worldMat);
@@ -322,20 +353,24 @@ void Render()
 	// use DeviceContext to talk to the API
 	gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
 	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH,1,0);
-	//objects
+	//swords
 	shader_object.bindShadersAndLayout();
-	int count = 5;
-	for (int i = 0; i < count; i++)
+	for (int i = 0; i < swordPositions.length(); i++)
 	{
-		float r = (6.28 / count)*i;
-		float l = 1;
-		sword.setPosition(float3(cos(rotation+r)*l,0.2,sin(rotation+r)*l));
+		sword.setPosition(swordPositions[i]);
 		sword.rotateY(deltaTime*XM_2PI*0.25*(1.0f / 4));
 		updateMatrixBuffer(sword.getWorldMatrix());
 		sword.draw();
 	}
+	//lights
+	for (int i = 0; i < lights.lightCount.x; i++)
+	{
+		ball.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
+		ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.01);
+		updateMatrixBuffer(ball.getWorldMatrix());
+		ball.draw();
+	}
 	//terrain
-	terrain.rotateY(deltaTime*XM_2PI*0.25*(1.0f / 4));
 	shader_terrain.bindShadersAndLayout();
 	updateMatrixBuffer(terrain.getWorldMatrix());
 	terrain.draw();
@@ -345,6 +380,10 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 {
 	MSG msg = { 0 };
 	HWND wndHandle = InitWindow(hInstance); //1. Skapa fönster
+
+	srand(time(NULL));
+
+	m_keyboard = std::make_unique<Keyboard>();
 
 	if (wndHandle)
 	{
@@ -358,10 +397,21 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		CreateMatrixDataBuffer();
 
+		lights.randomize();
+
 		sword.loadMesh("Meshes/Sword");
 		sword.setScale(float3(0.1,0.1,0.1));
 
-		terrain.create(XMINT2(100,100),4,2,L"Images/heightMap1.jpg");
+		ball.loadMesh("Meshes/ball");
+
+		terrain.create(XMINT2(200,200),10,5,L"Images/heightMap1.jpg");
+
+		for (int i = 0; i < swordPositions.length(); i++)
+		{
+			swordPositions[i] = float3((float)(rand() % 1000) / 1000 - 0.5, 0, (float)(rand() % 1000) / 1000 - 0.5);
+			swordPositions[i] *= float3(10,1,10);
+			swordPositions[i].y = terrain.getHeightOfTerrainFromCoordinates(swordPositions[i].x, swordPositions[i].z);
+		}
 
 		shader_object.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex_Terrain.hlsl", L"Effects/Geometry_Terrain.hlsl", L"Effects/Fragment_Terrain.hlsl");
@@ -379,10 +429,75 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 			}
 			else
 			{
+				Keyboard::State kb = m_keyboard->GetState();
+				//close window
+				if (kb.Escape) {
+					break;
+				}
+				//cameraRotation
+				float rotSpeed = 2 * deltaTime;
+				if (kb.Up) {
+					cameraRotation.x -= rotSpeed;
+				}
+				if (kb.Down) {
+					cameraRotation.x += rotSpeed;
+				}
+				if (kb.Left) {
+					cameraRotation.y -= rotSpeed;
+				}
+				if (kb.Right) {
+					cameraRotation.y += rotSpeed;
+				}
+				if (cameraRotation.x > (3.14 / 2)*0.9) cameraRotation.x = (3.14 / 2)*0.9;
+				if (cameraRotation.x < (-3.14 / 2)*0.9) cameraRotation.x = (-3.14 / 2)*0.9;
+				float4x4 rotMat = float4x4::CreateRotationX(cameraRotation.x)*float4x4::CreateRotationY(cameraRotation.y);
+				cameraForward = XMVector3Transform(float4(0,0,1,1),rotMat);
+				//cameraMovement
+				float speed = 0.01;
+				float jumpForce = 0.01;
+				float3 left = cameraForward.Cross(float3(0,1,0));
+				float3 forward = XMVector3Transform(float4(0,0,1,1),float4x4::CreateRotationY(cameraRotation.y));
+				left.Normalize();
+				if (kb.LeftShift) speed *= 2;
+				if (kb.W) {
+					acceleration += forward * speed;
+				}
+				if (kb.S) {
+					acceleration -= forward * speed;
+				}
+				if (kb.A) {
+					acceleration += left * speed;
+				}
+				if (kb.D) {
+					acceleration -= left * speed;
+				}
+				if (kb.Space && grounded) {
+					//acceleration += float3(0,1,0)*jumpForce;
+					velocity.y = jumpForce;
+					grounded = false;
+				}
+				if(!grounded)acceleration += gravityDirection * gravityForce;
+				velocity += acceleration * deltaTime;
+				acceleration = float3(0,0,0);
+				//collision
+				float3 p = cameraPosition + velocity;
+				float hy = terrain.getHeightOfTerrainFromCoordinates(p.x, p.z);
+				if (p.y < hy) {
+					velocity.y += (hy - p.y)*deltaTime*0.2;
+					grounded = true;
+				}
+				else grounded = false;
+
+				cameraPosition += velocity;
+				float vy = velocity.y;
+				velocity -= velocity * 10 * deltaTime;
+				if(vy < 0)velocity.y = vy;
+				if (velocity.Length() < 0.000001)velocity = float3(0,0,0);
+
 				//rotate plane
 				rotation += deltaTime*XM_2PI*0.25*(1.0f/4);
 				//update lightdata buffer
-				gDeviceContext->UpdateSubresource(gLightBuffer, 0, 0, &light, 0, 0);
+				gDeviceContext->UpdateSubresource(gLightBuffer, 0, 0, &lights, 0, 0);
 				//update cameradata buffer
 				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x,cameraPosition.y,cameraPosition.z,1);
 				gDeviceContext->UpdateSubresource(gCameraBuffer, 0, 0, &cpD, 0, 0);
@@ -392,7 +507,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
 			}
 			time = clock() - time;
-			deltaTime = time/1000.0f;
+			deltaTime = (float)time/1000.0f;
 		}
 
 		gMatrixBuffer->Release();
@@ -445,7 +560,20 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 	{
 	case WM_DESTROY:
 		PostQuitMessage(0);
-		break;		
+		break;	
+	case WM_ACTIVATEAPP:
+		Keyboard::ProcessMessage(message, wParam, lParam);
+		//Mouse::ProcessMessage(message, wParam, lParam);
+		break;
+	case WM_MOUSEHOVER:
+		//Mouse::ProcessMessage(message, wParam, lParam);
+		break;
+	case WM_KEYDOWN:
+	case WM_SYSKEYDOWN:
+	case WM_KEYUP:
+	case WM_SYSKEYUP:
+		Keyboard::ProcessMessage(message, wParam, lParam);
+		break;
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);

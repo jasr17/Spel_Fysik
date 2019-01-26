@@ -266,7 +266,7 @@ template<typename T>
 inline Array<T>::Array(int size)
 {
 	if (size > 0) {
-		appendCapacity(size);
+		resize(size);
 	}
 }
 

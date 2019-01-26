@@ -11,24 +11,27 @@ private:
 	float3 scale = float3(1,1,1);
 
 	XMINT2 tileCount;
+	Vertex** grid = nullptr;
 	Array<Vertex> mesh;
 
 	ID3D11Buffer* vertexBuffer = nullptr;
 	ID3D11ShaderResourceView* textureView = nullptr;
 
 	void freeGrid(Vertex** grid);
-	Vertex** createGrid();
-	void convertGridToMesh(Vertex** grid);
-	Vertex** applyHeightToGrid(Vertex** grid, const wchar_t* filePath);
-	Vertex** configureNormals(Vertex** grid);
+	void createGrid();
+	void convertGridToMesh();
+	void applyHeightToGrid(const wchar_t* filePath);
+	void configureNormals();
+	void smoothSurface(float s);
 	void createBuffers();
 	void freeBuffers();
 	void reset();
 public:
 	void rotateY(float y);
 	float4x4 getWorldMatrix();
+	float getHeightOfTerrainFromCoordinates(float x, float y);
 	void draw();
-	bool create(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath);
+	bool create(XMINT2 _tileCount, float desiredMapSize, float height, const wchar_t* filePath);
 	Terrain(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath);
 	Terrain();
 	~Terrain();
@@ -43,24 +46,23 @@ inline void Terrain::freeGrid(Vertex ** grid)
 	delete[] grid;
 	grid = nullptr;
 }
-inline Vertex** Terrain::createGrid()
+inline void Terrain::createGrid()
 {
 	//create terrain grid
-	float tileLength = 1.0f / (tileCount.x > tileCount.y ? tileCount.x : tileCount.y);
-	Vertex** grid = new Vertex*[tileCount.x + 1];
+	float2 tileLength = float2(1.0f / tileCount.x, 1.0f/tileCount.y);
+	grid = new Vertex*[tileCount.x + 1];
 	for (int xx = 0; xx < tileCount.x + 1; xx++)
 	{
 		grid[xx] = new Vertex[tileCount.y + 1];
 		for (int yy = 0; yy < tileCount.y + 1; yy++)
 		{
-			grid[xx][yy].position = float3(xx*tileLength - (tileLength*tileCount.x)/2, 0, yy*tileLength - (tileLength*tileCount.y)/2);
+			grid[xx][yy].position = float3(xx*tileLength.x - (tileLength.x*tileCount.x)/2, 0, yy*tileLength.y - (tileLength.y*tileCount.y)/2);
 			grid[xx][yy].uv = float2((float)xx/tileCount.x, (float)yy/tileCount.y);
 			grid[xx][yy].normal = float3(0,1,0);
 		}
 	}
-	return grid;
 }
-inline void Terrain::convertGridToMesh(Vertex ** grid)
+inline void Terrain::convertGridToMesh()
 {
 	mesh.reset();
 	mesh.resize(tileCount.x*tileCount.y*6);
@@ -89,9 +91,8 @@ inline void Terrain::convertGridToMesh(Vertex ** grid)
 			grid[xx + 1][yy + 0].normal += n2;
 		}
 	}
-	freeGrid(grid);
 }
-inline Vertex ** Terrain::applyHeightToGrid(Vertex ** grid, const wchar_t* filePath)
+inline void Terrain::applyHeightToGrid(const wchar_t* filePath)
 {
 	//get texture
 	CoInitialize(nullptr);
@@ -125,10 +126,8 @@ inline Vertex ** Terrain::applyHeightToGrid(Vertex ** grid, const wchar_t* fileP
 			grid[xx][yy].position.y = (float)d / 255;
 		}
 	}
-
-	return grid;
 }
-inline Vertex ** Terrain::configureNormals(Vertex ** grid)
+inline void Terrain::configureNormals()
 {
 	//sum all normals
 	int index = 0;
@@ -159,7 +158,34 @@ inline Vertex ** Terrain::configureNormals(Vertex ** grid)
 			grid[xx][yy].normal.Normalize();
 		}
 	}
-	return grid;
+}
+inline void Terrain::smoothSurface(float s)
+{
+	//create temp grid
+	float3** tempGrid = new float3*[tileCount.x+1];
+	for (int i = 0; i < tileCount.x+1; i++)
+	{
+		tempGrid[i] = new float3[tileCount.y+1];
+		for (int j = 0; j < tileCount.y; j++)
+		{
+			tempGrid[i][j] = grid[i][j].position;
+		}
+	}
+	//smooth
+	for (int yy = 1; yy < tileCount.y; yy++)
+	{
+		for (int xx = 1; xx < tileCount.x; xx++)
+		{
+			float3 mp = (tempGrid[xx + 1][yy + 0] + tempGrid[xx + 0][yy + 1] + tempGrid[xx + -1][yy + 0] + tempGrid[xx + 0][yy + -1]) / 4;
+			grid[xx][yy].position += (mp-grid[xx][yy].position)*s;
+		}
+	}
+	//free
+	for (int i = 0; i < tileCount.x; i++)
+	{
+		delete[] tempGrid[i];
+	}
+	delete[] tempGrid;
 }
 inline void Terrain::createBuffers()
 {
@@ -204,6 +230,28 @@ inline float4x4 Terrain::getWorldMatrix()
 	float4x4 mat = XMMatrixScaling(scale.x, scale.y, scale.z)*XMMatrixRotationZ(rotation.z)*XMMatrixRotationX(rotation.x)*XMMatrixRotationY(rotation.y)*XMMatrixTranslation(position.x, position.y, position.z);
 	return mat;
 }
+inline float Terrain::getHeightOfTerrainFromCoordinates(float x, float y)
+{
+	float X = x / scale.x + 0.5;
+	float Y = y / scale.z + 0.5;
+	if (X > 0 && X < 1 && Y > 0 && Y < 1) {
+		float fx = X * tileCount.x;
+		float fy = Y * tileCount.y;
+		int ix = fx;
+		int iy = fy;
+		float3 p1 = grid[ix + 0][iy + 0].position;
+		float3 p2 = grid[ix + 1][iy + 0].position;
+		float3 p3 = grid[ix + 0][iy + 1].position;
+		float3 p4 = grid[ix + 1][iy + 1].position;
+		float3 p12 = p1 + (p2 - p1)*(ix - fx);
+		float3 p34 = p3 + (p4 - p3)*(ix - fx);
+		float3 p1234 = p12 + (p34 - p12)*(iy - fy);
+		return p1234.y*scale.y;
+	}
+	else {
+		return 0;
+	}
+}
 inline void Terrain::draw()
 {
 	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -216,7 +264,7 @@ inline void Terrain::draw()
 	gDeviceContext->Draw(mesh.length(),0);
 }
 /*creates mesh and loads texture. Returns true if failed*/
-inline bool Terrain::create(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath)
+inline bool Terrain::create(XMINT2 _tileCount, float desiredMapSize, float height, const wchar_t* filePath)
 {
 	bool check = true;
 	if (_tileCount.x > 0 && _tileCount.y > 0) {
@@ -227,11 +275,17 @@ inline bool Terrain::create(XMINT2 _tileCount, float _tileSize, float height, co
 		CoUninitialize();
 		//create grid and mesh
 		tileCount = _tileCount;
-		scale = float3(_tileSize,height,_tileSize);
-		Vertex** g = createGrid();
-		g = applyHeightToGrid(g,filePath);
-		g = configureNormals(g);
-		convertGridToMesh(g);
+		if (_tileCount.x > _tileCount.y) {
+			scale = float3(desiredMapSize,height, desiredMapSize*((float)_tileCount.y/_tileCount.x));
+		}
+		else {
+			scale = float3(desiredMapSize*((float)_tileCount.x/_tileCount.y), height, desiredMapSize);
+		}
+		createGrid();
+		applyHeightToGrid(filePath);
+		smoothSurface(1);
+		configureNormals();
+		convertGridToMesh();
 		createBuffers();
 	}
 	return check;
@@ -248,6 +302,7 @@ inline Terrain::Terrain()
 
 inline Terrain::~Terrain()
 {
+	freeGrid(grid);
 	freeBuffers();
 }
 
