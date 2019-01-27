@@ -15,7 +15,6 @@ private:
 	Array<Vertex> mesh;
 
 	ID3D11Buffer* vertexBuffer = nullptr;
-	ID3D11ShaderResourceView* textureView = nullptr;
 
 	void freeGrid(Vertex** grid);
 	void createGrid();
@@ -95,7 +94,6 @@ inline void Terrain::convertGridToMesh()
 inline void Terrain::applyHeightToGrid(const wchar_t* filePath)
 {
 	//get texture
-	CoInitialize(nullptr);
 	ID3D11Resource* res = nullptr;
 	HRESULT hr = CreateWICTextureFromFileEx(gDevice, filePath,0,D3D11_USAGE_STAGING,0, D3D11_CPU_ACCESS_READ,0,WIC_LOADER_DEFAULT, &res, nullptr);
 
@@ -108,8 +106,6 @@ inline void Terrain::applyHeightToGrid(const wchar_t* filePath)
 	D3D11_MAPPED_SUBRESOURCE sub;
 	hr = gDeviceContext->Map(res,0,D3D11_MAP_READ,0,&sub);
 
-	CoUninitialize();
-	unsigned char* data = (unsigned char*)sub.pData;
 	int texWidth = texD.Width;
 	int texHeight = texD.Height;
 	for (int yy = 0; yy < tileCount.y+1; yy++)
@@ -118,12 +114,22 @@ inline void Terrain::applyHeightToGrid(const wchar_t* filePath)
 		{
 			float2 uv = grid[xx][yy].uv;
 			int ix = uv.x*(texWidth-1), iy = uv.y*(texHeight-1);
-			unsigned char d = 0;
-			if(texD.Format == DXGI_FORMAT_R8_UNORM)
-				d = data[iy * sub.RowPitch + ix];
-			if (texD.Format == DXGI_FORMAT_R8G8B8A8_UNORM)
-				d = data[iy * sub.RowPitch + ix*4];
-			grid[xx][yy].position.y = (float)d / 255;
+			if (texD.Format == DXGI_FORMAT_R8_UNORM) {
+				unsigned char d = ((unsigned char*)sub.pData)[iy * sub.RowPitch + ix];
+				grid[xx][yy].position.y = (float)d / (pow(2, 1 * 8) - 1);
+			}	
+			else if (texD.Format == DXGI_FORMAT_R8G8B8A8_UNORM) {
+				unsigned char d = ((unsigned char*)sub.pData)[iy * sub.RowPitch + ix*4];
+				grid[xx][yy].position.y = (float)d / (pow(2, 1 * 8) - 1);
+			}
+			else if (texD.Format == DXGI_FORMAT_R16G16B16A16_UNORM) {
+				unsigned short int d = ((unsigned short int*)sub.pData)[iy*(sub.RowPitch/sizeof(short int)) + ix*4];
+				grid[xx][yy].position.y = (float)d / (pow(2, sizeof(short int)*8) - 1);
+			}
+			else {
+				grid[xx][yy].position.y = 0;
+			}
+			
 		}
 	}
 }
@@ -166,7 +172,7 @@ inline void Terrain::smoothSurface(float s)
 	for (int i = 0; i < tileCount.x+1; i++)
 	{
 		tempGrid[i] = new float3[tileCount.y+1];
-		for (int j = 0; j < tileCount.y; j++)
+		for (int j = 0; j < tileCount.y+1; j++)
 		{
 			tempGrid[i][j] = grid[i][j].position;
 		}
@@ -206,10 +212,6 @@ inline void Terrain::freeBuffers()
 	if (vertexBuffer != nullptr) {
 		vertexBuffer->Release();
 		vertexBuffer = nullptr;
-	}
-	if (textureView != nullptr) {
-		textureView->Release();
-		textureView = nullptr;
 	}
 }
 inline void Terrain::reset()
@@ -259,7 +261,6 @@ inline void Terrain::draw()
 	UINT strides = sizeof(Vertex);
 	UINT offset = 0;
 	gDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &strides, &offset);
-	gDeviceContext->GSSetShaderResources(0, 1, &textureView);
 
 	gDeviceContext->Draw(mesh.length(),0);
 }
@@ -268,11 +269,6 @@ inline bool Terrain::create(XMINT2 _tileCount, float desiredMapSize, float heigh
 {
 	bool check = true;
 	if (_tileCount.x > 0 && _tileCount.y > 0) {
-		//get texture
-		CoInitialize(nullptr);
-		HRESULT hr = CreateWICTextureFromFile(gDevice, gDeviceContext, filePath, nullptr, &textureView);
-		if (hr != S_OK) check = false;
-		CoUninitialize();
 		//create grid and mesh
 		tileCount = _tileCount;
 		if (_tileCount.x > _tileCount.y) {
@@ -283,7 +279,7 @@ inline bool Terrain::create(XMINT2 _tileCount, float desiredMapSize, float heigh
 		}
 		createGrid();
 		applyHeightToGrid(filePath);
-		smoothSurface(1);
+		smoothSurface(0.5);
 		configureNormals();
 		convertGridToMesh();
 		createBuffers();

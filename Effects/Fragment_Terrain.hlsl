@@ -16,12 +16,6 @@ cbuffer cameraBuffer : register(b1)
     float4 camPos;
 }
 
-SamplerState samplerAni
-{
-    Filter = ANISOTROPIC;
-    MaxAnisotropy = 4;  
-};
-
 float4 PS_main(GeoOut input) : SV_Target
 {
     float3 normal = input.Normal;

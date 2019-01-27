@@ -61,5 +61,8 @@
     <FxCompile Include="Effects\Vertex_Terrain.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
+    <FxCompile Include="Effects\Fragment_onlyMesh.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

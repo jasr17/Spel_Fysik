@@ -15,18 +15,6 @@ cbuffer cameraBuffer : register(b1)
 {
     float4 camPos;
 }
-cbuffer materialBuffer : register(b2)
-{
-    float4 ambientReflectivity;
-    float4 diffuseReflectivity;
-    float4 specularReflectivity;
-};
-Texture2D maps[3] : register(t0);
-SamplerState samplerAni
-{
-    Filter = ANISOTROPIC;
-    MaxAnisotropy = 4;
-};
 
 float4 PS_main(GeoOut input) : SV_Target
 {
@@ -35,13 +23,9 @@ float4 PS_main(GeoOut input) : SV_Target
     float3 posW = input.PosW.xyz;
     //ambient
     float3 ambient = float3(0.1, 0.1, 0.1);
-    //maps
-    float3 map_ambient = maps[0].Sample(samplerAni, uv);
-    float3 map_diffuse = maps[1].Sample(samplerAni, uv);
-    float3 map_specular = maps[2].Sample(samplerAni, uv);
     //resource color
-    float3 textureColor = map_diffuse;
-    float3 finalColor = textureColor * ambient * ambientReflectivity.rgb;
+    float3 textureColor = float3(1,1,1);
+    float3 finalColor = textureColor * ambient;
     for (int i = 0; i < lightCount.x; i++)
     {
         //diffuse
@@ -51,9 +35,9 @@ float4 PS_main(GeoOut input) : SV_Target
         //specular
         float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
         float3 reflekt = normalize(2 * dot(normal, toLight) * normal - toLight);
-        float specular = pow(max(dot(reflekt, toCam), 0), specularReflectivity.w);
+        float specular = pow(max(dot(reflekt, toCam), 0), 1);
 
-        finalColor += (diffuseReflectivity.rgb * textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular * specularReflectivity.rgb) / pow(distToLight, 3);
+        finalColor += (textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular) / pow(distToLight, 3);
     }
     //return shadowedTextureColor
     finalColor = clamp(finalColor, float3(0,0,0), float3(1, 1, 1));

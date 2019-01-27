@@ -21,6 +21,7 @@ float deltaTime = 0;
 Array<float3>swordPositions(10);
 Object sword;
 Object ball;
+Object plane;
 Terrain terrain;
 
 std::unique_ptr<DirectX::Keyboard> m_keyboard;
@@ -270,6 +271,7 @@ public:
 };
 ShaderSet shader_object;
 ShaderSet shader_terrain;
+ShaderSet shader_object_onlyMesh;
 
 void CreateLightBuffer() {
 	D3D11_BUFFER_DESC desc;
@@ -331,11 +333,9 @@ void CreateCameraBuffer() {
 }
 
 void updateMatrixBuffer(float4x4 worldMat) {
-
-	float3 camPos = cameraPosition + float3(0, 0.5, 0);
 	XMFLOAT3 at = cameraPosition+cameraForward;
 	XMFLOAT3 up(0, 1, 0);
-	XMMATRIX mView = XMMatrixLookAtLH(XMLoadFloat3(&camPos), XMLoadFloat3(&at), XMLoadFloat3(&up));
+	XMMATRIX mView = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
 
 	XMMATRIX mPerspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 200);
 
@@ -356,8 +356,9 @@ void Render()
 	// use DeviceContext to talk to the API
 	gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
 	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH,1,0);
-	//swords
+
 	shader_object.bindShadersAndLayout();
+	//sword
 	for (int i = 0; i < swordPositions.length(); i++)
 	{
 		sword.setPosition(swordPositions[i]);
@@ -365,6 +366,7 @@ void Render()
 		updateMatrixBuffer(sword.getWorldMatrix());
 		sword.draw();
 	}
+	shader_object_onlyMesh.bindShadersAndLayout();
 	//lights
 	for (int i = 0; i < lights.lightCount.x; i++)
 	{
@@ -391,6 +393,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 	m_keyboard = std::make_unique<Keyboard>();
 
+	CoInitialize(nullptr);
+
 	if (wndHandle)
 	{
 		CreateDirect3DContext(wndHandle); //2. Skapa och koppla SwapChain, Device och Device Context
@@ -410,16 +414,19 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		ball.loadMesh("Meshes/ball");
 
-		terrain.create(XMINT2(200,200),10,5,L"Images/heightMap1.jpg");
+		plane.loadMesh("Meshes/plane");
+
+		terrain.create(XMINT2(200,200),10,5,L"Images/heightMap2.png");
 
 		for (int i = 0; i < swordPositions.length(); i++)
 		{
 			swordPositions[i] = float3((float)(rand() % 1000) / 1000 - 0.5, 0, (float)(rand() % 1000) / 1000 - 0.5);
 			swordPositions[i] *= float3(10,1,10);
-			swordPositions[i].y = terrain.getHeightOfTerrainFromCoordinates(swordPositions[i].x, swordPositions[i].z);
+			swordPositions[i].y = terrain.getHeightOfTerrainFromCoordinates(swordPositions[i].x, swordPositions[i].z)+0.2;
 		}
 
 		shader_object.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment.hlsl");
+		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex_Terrain.hlsl", L"Effects/Geometry_Terrain.hlsl", L"Effects/Fragment_Terrain.hlsl");
 
 		ShowWindow(wndHandle, nCmdShow);
@@ -511,7 +518,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				velocity += acceleration * deltaTime;//update velocity
 				acceleration = float3(0,0,0);//reset acceleration
 				//collision
-				float3 nextPos = cameraPosition + velocity;
+				float3 nextPos = cameraPosition-float3(0,0.5,0) + velocity;
 				float hy = terrain.getHeightOfTerrainFromCoordinates(nextPos.x, nextPos.z);
 				if (nextPos.y < hy) {//if below terrain then add force up
 					velocity.y += (hy - nextPos.y)*deltaTime*0.2;
@@ -541,6 +548,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 			time = clock() - time;
 			deltaTime = (float)time/1000.0f;
 		}
+
+		CoUninitialize();
 
 		gMatrixBuffer->Release();
 		gLightBuffer->Release();
