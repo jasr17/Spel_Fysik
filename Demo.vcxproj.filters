@@ -49,16 +49,7 @@
     <FxCompile Include="Effects\Fragment_Terrain.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
-    <FxCompile Include="Effects\Geometry.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
-    <FxCompile Include="Effects\Geometry_Terrain.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
     <FxCompile Include="Effects\Vertex.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
-    <FxCompile Include="Effects\Vertex_Terrain.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
     <FxCompile Include="Effects\Fragment_onlyMesh.hlsl">

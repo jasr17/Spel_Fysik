@@ -66,16 +66,16 @@ private:
 	int getTotalVertexCount() const;
 	int getTotalTriangularVertexCount() const;
 	Vertex createVertexFromRef(VertexRef& ref) const;
-public:
-	bool hasLoaded() const;
-	void reset();
 	/*loads arrays of positions, uvs, normals and faces. Returns true if failed*/
 	bool loadMeshFromFile(string filename);
 	bool loadMaterialFromFile(string filename);
+public:
+	bool hasLoaded() const;
+	void reset();
 	/*loads mesh and material. Dont include file format!!. Returns true if failed*/
 	bool loadFromFile(string filename);
 	/*return a triangular mesh and the length of each part of the mesh, divided based on material*/
-	void createTriangularMesh(Array<Vertex>& arr, Array<int>& partCount) const;
+	Array<Vertex> createTriangularMesh(Array<int>& partCount) const;
 	void getMaterialParts(Array<MaterialPart>& _materials) const;
 	void averagePointNormals();
 	void averagePointTriangleNormals();
@@ -304,9 +304,9 @@ inline bool OBJLoader::loadFromFile(string filename)
 	return false;
 }
 
-inline void OBJLoader::createTriangularMesh(Array<Vertex>& arr, Array<int>& partCount) const
+inline Array<Vertex> OBJLoader::createTriangularMesh(Array<int>& partCount) const
 {
-	arr.reset();
+	Array<Vertex> arr;
 	arr.appendCapacity(getTotalTriangularVertexCount());
 	partCount.reset();
 	partCount.resize(meshParts.length());
@@ -334,6 +334,7 @@ inline void OBJLoader::createTriangularMesh(Array<Vertex>& arr, Array<int>& part
 			}
 		}
 	}
+	return arr;
 }
 
 inline void OBJLoader::getMaterialParts(Array<MaterialPart>& _materials) const

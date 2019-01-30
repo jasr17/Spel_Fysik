@@ -4,23 +4,29 @@ struct VS_IN
     float2 TexCoord : TexCoordinate;
     float3 Normal : Normal;
 };
-struct VS_OUT
+struct GeoOut
 {
-    float4 Pos : SV_POSITION;
+    float4 PosW : POSITION;
+    float4 PosH : SV_POSITION;
     float2 TexCoord : TEXCOORD;
     float3 Normal : NORMAL;
+};
+cbuffer cbuffs : register(b0)
+{
+    matrix mWorld, mInvTraWorld, mWorldViewPerspective;
 };
 
 //-----------------------------------------------------------------------------------------
 // VertexShader: VSScene
 //-----------------------------------------------------------------------------------------
-VS_OUT VS_main(VS_IN input)
+GeoOut VS_main(VS_IN input)
 {
-    VS_OUT output = (VS_OUT) 0;
+    GeoOut output = (GeoOut) 0;
 
-    output.Pos = float4(input.Pos,1);
+    output.PosW = mul(float4(input.Pos, 1), mWorld);
+    output.PosH = mul(float4(input.Pos, 1), mWorldViewPerspective);
     output.TexCoord = input.TexCoord;
-    output.Normal = input.Normal;
+    output.Normal = normalize(mul(float4(input.Normal, 0), mInvTraWorld).xyz);
 
     return output;
 }

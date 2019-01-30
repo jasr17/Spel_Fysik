@@ -4,7 +4,10 @@
 
 extern ID3D11Device* gDevice;
 extern ID3D11DeviceContext* gDeviceContext;
-
+enum typeOfShading {
+	flatShading,
+	smoothShading
+};
 class Object : private OBJLoader
 {
 private:
@@ -35,7 +38,7 @@ private:
 public:
 	Array<Vertex>& getMesh();
 	float4x4 getWorldMatrix();
-	bool loadMesh(string OBJFile);
+	bool loadMesh(string OBJFile, typeOfShading ToS);
 	void setPosition(float3 pos);
 	void rotateX(float x);
 	void rotateY(float y);
@@ -43,7 +46,7 @@ public:
 	void setScale(float3 _scale);
 	void move(float3 offset);
 	void draw();
-	Object(string OBJFile = "");
+	Object();
 	~Object();
 };
 
@@ -126,12 +129,11 @@ inline float4x4 Object::getWorldMatrix()
 	return mat;
 }
 /*Returns true if failed*/
-inline bool Object::loadMesh(string OBJFile)
+inline bool Object::loadMesh(string OBJFile, typeOfShading ToS)
 {
 	if (!loadFromFile(OBJFile)) {
-		//averagePointNormals();
-		averagePointTriangleNormals();
-		createTriangularMesh(mesh, meshPartSize);
+		if(ToS == typeOfShading::smoothShading)averagePointTriangleNormals();
+		mesh = createTriangularMesh(meshPartSize);
 		getMaterialParts(materials);
 		reset();
 		createBuffers();
@@ -189,9 +191,8 @@ inline void Object::draw()
 
 }
 
-inline Object::Object(string OBJFile)
+inline Object::Object()
 {
-	if(OBJFile != "")loadMesh(OBJFile);
 }
 
 inline Object::~Object()

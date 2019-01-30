@@ -18,9 +18,10 @@ private:
 
 	void freeGrid(Vertex** grid);
 	void createGrid();
-	void convertGridToMesh();
+	void convertGridToMesh_flatShading();
+	void convertGridToMesh_smoothShading();
 	void applyHeightToGrid(const wchar_t* filePath);
-	void configureNormals();
+	void smoothNormals();
 	void smoothSurface(float s);
 	void createBuffers();
 	void freeBuffers();
@@ -61,33 +62,45 @@ inline void Terrain::createGrid()
 		}
 	}
 }
-inline void Terrain::convertGridToMesh()
+inline void Terrain::convertGridToMesh_flatShading()
 {
 	mesh.reset();
-	mesh.resize(tileCount.x*tileCount.y*6);
-	int index = 0;
+	mesh.appendCapacity(tileCount.x*tileCount.y*6);
 	for (int yy = 0; yy < tileCount.y; yy++)
 	{
 		for (int xx = 0; xx < tileCount.x; xx++)
 		{
-			//tri1
-			mesh.set(index++, grid[xx + 1][yy + 1]);
-			mesh.set(index++, grid[xx + 0][yy + 0]);
-			mesh.set(index++, grid[xx + 0][yy + 1]);
-			float3 n1 = (grid[xx + 0][yy + 0].position - grid[xx + 1][yy + 1].position).Cross(grid[xx + 0][yy + 1].position- grid[xx + 1][yy + 1].position);
-			//tri2
-			mesh.set(index++, grid[xx + 0][yy + 0]);
-			mesh.set(index++, grid[xx + 1][yy + 1]);
-			mesh.set(index++, grid[xx + 1][yy + 0]);
+			//add the position and uv but calculate the normal for this specific triangle to get the flat shading effect.
+			float3 n1 = (grid[xx + 0][yy + 0].position - grid[xx + 1][yy + 1].position).Cross(grid[xx + 0][yy + 1].position - grid[xx + 1][yy + 1].position);
 			float3 n2 = (grid[xx + 1][yy + 1].position - grid[xx + 0][yy + 0].position).Cross(grid[xx + 1][yy + 0].position - grid[xx + 0][yy + 0].position);
-
-			grid[xx + 1][yy + 1].normal += n1;
-			grid[xx + 0][yy + 0].normal += n1;
-			grid[xx + 0][yy + 1].normal += n1;
-
-			grid[xx + 0][yy + 0].normal += n2;
-			grid[xx + 1][yy + 1].normal += n2;
-			grid[xx + 1][yy + 0].normal += n2;
+			//tri 1
+			mesh.add(Vertex(grid[xx + 1][yy + 1].position, grid[xx + 1][yy + 1].uv, n1));
+			mesh.add(Vertex(grid[xx + 0][yy + 0].position, grid[xx + 0][yy + 0].uv, n1));
+			mesh.add(Vertex(grid[xx + 0][yy + 1].position, grid[xx + 0][yy + 1].uv, n1));
+			//tri 2
+			mesh.add(Vertex(grid[xx + 0][yy + 0].position, grid[xx + 0][yy + 0].uv, n2));
+			mesh.add(Vertex(grid[xx + 1][yy + 1].position, grid[xx + 1][yy + 1].uv, n2));
+			mesh.add(Vertex(grid[xx + 1][yy + 0].position, grid[xx + 1][yy + 0].uv, n2));
+		}
+	}
+}
+inline void Terrain::convertGridToMesh_smoothShading()
+{
+	smoothNormals();
+	mesh.reset();
+	mesh.appendCapacity(tileCount.x*tileCount.y * 6);
+	for (int yy = 0; yy < tileCount.y; yy++)
+	{
+		for (int xx = 0; xx < tileCount.x; xx++)
+		{
+			//tri 1
+			mesh.add(grid[xx + 1][yy + 1]);
+			mesh.add(grid[xx + 0][yy + 0]);
+			mesh.add(grid[xx + 0][yy + 1]);
+			//tri 2
+			mesh.add(grid[xx + 0][yy + 0]);
+			mesh.add(grid[xx + 1][yy + 1]);
+			mesh.add(grid[xx + 1][yy + 0]);
 		}
 	}
 }
@@ -133,8 +146,17 @@ inline void Terrain::applyHeightToGrid(const wchar_t* filePath)
 		}
 	}
 }
-inline void Terrain::configureNormals()
+/*sets the average normal for all point in grid*/
+inline void Terrain::smoothNormals()
 {
+	//reset normals
+	for (int yy = 0; yy < tileCount.y; yy++)
+	{
+		for (int xx = 0; xx < tileCount.x; xx++)
+		{
+			grid[xx][yy].normal = float3(0, 0, 0);
+		}
+	}
 	//sum all normals
 	int index = 0;
 	float3 normal;
@@ -280,22 +302,18 @@ inline bool Terrain::create(XMINT2 _tileCount, float desiredMapSize, float heigh
 		createGrid();
 		applyHeightToGrid(filePath);
 		smoothSurface(0.5);
-		configureNormals();
-		convertGridToMesh();
+		convertGridToMesh_smoothShading();
 		createBuffers();
 	}
 	return check;
 }
-
 inline Terrain::Terrain(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath)
 {
 	create(_tileCount, _tileSize, height, filePath);
 }
-
 inline Terrain::Terrain()
 {
 }
-
 inline Terrain::~Terrain()
 {
 	freeGrid(grid);

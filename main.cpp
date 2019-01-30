@@ -21,7 +21,6 @@ float deltaTime = 0;
 Array<float3>swordPositions(10);
 Object sword;
 Object ball;
-Object plane;
 Terrain terrain;
 
 std::unique_ptr<DirectX::Keyboard> m_keyboard;
@@ -29,7 +28,7 @@ std::unique_ptr<Mouse> mouse = std::make_unique<Mouse>();
 float2 mousePos;
 
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective;
+	XMMATRIX mWorld,mInvTraWorld,mWorldViewPerspective;
 };
 struct LightData {
 	const float4 lightCount = float4(10, 0, 0,0);
@@ -44,7 +43,7 @@ struct LightData {
 			pos[i] = float4(random(-5, 5), random(2, 6), random(-5, 5), 1);
 			color[i] = float4(random(0, 1), random(0, 1), random(0, 1), 0);
 			color[i].Normalize();
-			color[i].w = random(5,10);
+			color[i].w = random(1,2);
 		}
 	}
 	LightData() {
@@ -53,7 +52,7 @@ struct LightData {
 } lights;
 //player variables
 bool grounded = false;
-float gravityForce = 0.005;
+float gravityForce = 3;
 float3 gravityDirection = float3(0,-1,0);
 float3 acceleration = float3(0,0,0);
 float3 velocity = float3(0,0,0);
@@ -257,7 +256,7 @@ public:
 		if (gVertexShader != nullptr)gVertexShader->Release();
 		if (gGeometryShader != nullptr)gGeometryShader->Release();
 		if (gPixelShader != nullptr)gPixelShader->Release();
-		if (gVertexLayout != nullptr)gVertexLayout->Release();							//MEMORY LEAKS
+		if (gVertexLayout != nullptr)gVertexLayout->Release();
 	}
 	ShaderSet(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0){
 		createShaders(vertexName,geometryName,fragmentName,inputDesc,inputDescCount);
@@ -314,7 +313,7 @@ void CreateMatrixDataBuffer() {
 	desc.ByteWidth = sizeof(WorldViewPerspectiveMatrix);
 
 	gDevice->CreateBuffer(&desc,nullptr,&gMatrixBuffer);
-	gDeviceContext->GSSetConstantBuffers(0, 1, &gMatrixBuffer);
+	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
 }
 
 void CreateCameraBuffer() {
@@ -342,8 +341,7 @@ void updateMatrixBuffer(float4x4 worldMat) {
 	WorldViewPerspectiveMatrix mat;
 	mat.mWorld = XMMatrixTranspose(worldMat);
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
-	mat.mView = XMMatrixTranspose(mView);
-	mat.mPerspective = XMMatrixTranspose(mPerspective);
+	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat,mView),mPerspective));
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
@@ -371,10 +369,14 @@ void Render()
 	for (int i = 0; i < lights.lightCount.x; i++)
 	{
 		ball.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
-		ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.01);
+		ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.03);
 		updateMatrixBuffer(ball.getWorldMatrix());
 		ball.draw();
 	}
+	ball.setScale(float3(1,1,1));
+	ball.setPosition(float3(0,6,0));
+	updateMatrixBuffer(ball.getWorldMatrix());
+	ball.draw();
 	//terrain
 	shader_terrain.bindShadersAndLayout();
 	updateMatrixBuffer(terrain.getWorldMatrix());
@@ -389,7 +391,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 	mouse->SetWindow(wndHandle);
 	mouse->SetVisible(false);
 
-	srand(time(NULL));
+	//srand(time(NULL));
 
 	m_keyboard = std::make_unique<Keyboard>();
 
@@ -409,12 +411,10 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		lights.randomize();
 
-		sword.loadMesh("Meshes/Sword");
+		sword.loadMesh("Meshes/Sword", flatShading);
 		sword.setScale(float3(0.1,0.1,0.1));
 
-		ball.loadMesh("Meshes/ball");
-
-		plane.loadMesh("Meshes/plane");
+		ball.loadMesh("Meshes/ball", smoothShading);
 
 		terrain.create(XMINT2(200,200),10,5,L"Images/heightMap2.png");
 
@@ -425,9 +425,9 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 			swordPositions[i].y = terrain.getHeightOfTerrainFromCoordinates(swordPositions[i].x, swordPositions[i].z)+0.2;
 		}
 
-		shader_object.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment.hlsl");
-		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment_onlyMesh.hlsl");
-		shader_terrain.createShaders(L"Effects/Vertex_Terrain.hlsl", L"Effects/Geometry_Terrain.hlsl", L"Effects/Fragment_Terrain.hlsl");
+		shader_object.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment.hlsl");
+		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
+		shader_terrain.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_Terrain.hlsl");
 
 		ShowWindow(wndHandle, nCmdShow);
 
@@ -491,47 +491,40 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				float4x4 rotMat = float4x4::CreateRotationX(cameraRotation.x)*float4x4::CreateRotationY(cameraRotation.y);
 				cameraForward = XMVector3Transform(float4(0,0,1,1),rotMat);
 				//camera movement
-				float speed = 0.01;
-				float jumpForce = 0.01;
+				float speed = 1;
+				float jumpForce = 2;
 				float3 left = cameraForward.Cross(float3(0,1,0));
 				float3 forward = XMVector3Transform(float4(0,0,1,1),float4x4::CreateRotationY(cameraRotation.y));
 				left.Normalize();
+				float3 movement(0, 0, 0);
 				if (kb.LeftShift) speed *= 2;//sprint
 				if (kb.W) {
-					acceleration += forward * speed;
+					movement += forward * speed;
 				}
 				if (kb.S) {
-					acceleration -= forward * speed;
+					movement -= forward * speed;
 				}
 				if (kb.A) {
-					acceleration += left * speed;
+					movement += left * speed;
 				}
 				if (kb.D) {
-					acceleration -= left * speed;
+					movement -= left * speed;
 				}
 				if (kb.Space && grounded) {//jump
-					//acceleration += float3(0,1,0)*jumpForce;
 					velocity.y = jumpForce;
 					grounded = false;
 				}
-				if(!grounded)acceleration += gravityDirection * gravityForce;//dont apply gravity if on ground
-				velocity += acceleration * deltaTime;//update velocity
-				acceleration = float3(0,0,0);//reset acceleration
-				//collision
-				float3 nextPos = cameraPosition-float3(0,0.5,0) + velocity;
+				if(!grounded)velocity += gravityDirection * gravityForce * deltaTime;//dont apply gravity if on ground
+				cameraPosition += movement*deltaTime + velocity*deltaTime;
+				//collision, only affects y-axis
+				float3 nextPos = cameraPosition + float3(0,-0.5,0);
 				float hy = terrain.getHeightOfTerrainFromCoordinates(nextPos.x, nextPos.z);
 				if (nextPos.y < hy) {//if below terrain then add force up
-					velocity.y += (hy - nextPos.y)*deltaTime*0.2;
+					cameraPosition.y += (hy - nextPos.y) * deltaTime * 5;
 					grounded = true;
+					velocity = float3(0,0,0);
 				}
 				else grounded = false;
-
-				cameraPosition += velocity;//update position
-				//slowdown velocity
-				float vy = velocity.y;
-				velocity -= velocity * 10 * deltaTime;
-				if(vy < 0)velocity.y = vy;
-				if (velocity.Length() < 0.000001)velocity = float3(0,0,0);//this code stops the up and down jittering
 
 				//rotate
 				rotation += deltaTime*XM_2PI*0.25*(1.0f/4);
