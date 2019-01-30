@@ -19,6 +19,7 @@
 float deltaTime = 0;
 
 Array<float3>swordPositions(10);
+float3 lookPos(0,0,0);
 Object sword;
 Object ball;
 Terrain terrain;
@@ -26,6 +27,7 @@ Terrain terrain;
 std::unique_ptr<DirectX::Keyboard> m_keyboard;
 std::unique_ptr<Mouse> mouse = std::make_unique<Mouse>();
 float2 mousePos;
+Mouse::ButtonStateTracker mouseTracker;
 
 struct WorldViewPerspectiveMatrix {
 	XMMATRIX mWorld,mInvTraWorld,mWorldViewPerspective;
@@ -346,6 +348,34 @@ void updateMatrixBuffer(float4x4 worldMat) {
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
 
+void mousePicking(float screenSpace_x, float screenSpace_y) {
+	//pos between -1 and 1
+	float SSxN = 2 * (screenSpace_x / (Win_WIDTH)) - 1;
+	float SSyN = -(2 * (screenSpace_y / (Win_HEIGHT)) - 1);
+	float4 vRayPos(0,0,0,1);
+	float4 vRayDir(SSxN,SSyN,1,0);
+	vRayDir.Normalize();
+	//convert to world space
+	XMFLOAT3 at = cameraPosition + cameraForward;
+	XMFLOAT3 up(0, 1, 0);
+	float4x4 mInvView = ((float4x4)XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up))).Invert();
+	float4 wRayPos = XMVector4Transform(vRayPos, mInvView);
+	float4 wRayDir = XMVector4Transform(vRayDir, mInvView);
+	//check all objects
+	float t = -1;
+	for (int i = 0; i < swordPositions.length(); i++)
+	{
+		sword.setPosition(swordPositions[i]);
+		float tt = sword.castRayOnMesh(float3(wRayPos.x, wRayPos.y, wRayPos.z),float3(wRayDir.x, wRayDir.y, wRayDir.z));
+		if ((tt < t && tt >= 0) || t < 0)t = tt;
+	}
+	//apply position
+	if (t >= 0) {
+		float4 target = (wRayPos + wRayDir * t);
+		lookPos = float3(target.x, target.y, target.z);
+	}
+}
+
 void Render()
 {
 	// clear the back buffer to a deep blue
@@ -373,8 +403,8 @@ void Render()
 		updateMatrixBuffer(ball.getWorldMatrix());
 		ball.draw();
 	}
-	ball.setScale(float3(1,1,1));
-	ball.setPosition(float3(0,6,0));
+	ball.setScale(float3(1, 1, 1)*0.1);
+	ball.setPosition(lookPos);
 	updateMatrixBuffer(ball.getWorldMatrix());
 	ball.draw();
 	//terrain
@@ -444,11 +474,11 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 			{
 				//Mouse
 				Mouse::State state = mouse->GetState();
-				Mouse::ButtonStateTracker tracker; tracker.Update(state);
+				mouseTracker.Update(state);
 				if (state.leftButton) {
 					//do something every frame
 				}
-				if (tracker.leftButton == Mouse::ButtonStateTracker::PRESSED) {
+				if (mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED) {
 					//do something once
 				}
 				//camera rotation with mouse
@@ -464,6 +494,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				mousePos = float2(newPos.x,newPos.y);//save cursor position
 
 				cameraRotation += float2(diff.y,diff.x)*0.002;//add mouse rotation
+
+				if(mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED)mousePicking((float)Win_WIDTH/2,(float)Win_HEIGHT/2);
 				//keyboard
 				Keyboard::State kb = m_keyboard->GetState();
 				//close window

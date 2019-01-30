@@ -35,6 +35,8 @@ private:
 		delete[] buf;
 		return r;
 	}
+	float triangleTest(float3 rayDir, float3 rayOrigin, float3 tri0, float3 tri1, float3 tri2);
+	float sphereTest(float3 rayDir, float3 rayOrigin, float3 centre, float radius);
 public:
 	Array<Vertex>& getMesh();
 	float4x4 getWorldMatrix();
@@ -46,6 +48,7 @@ public:
 	void setScale(float3 _scale);
 	void move(float3 offset);
 	void draw();
+	float castRayOnMesh(float3 rayPos, float3 rayDir);
 	Object();
 	~Object();
 };
@@ -119,6 +122,37 @@ inline void Object::freeBuffers()
 		maps = nullptr;
 	}
 }
+inline float Object::triangleTest(float3 rayDir, float3 rayOrigin, float3 tri0, float3 tri1, float3 tri2)
+{
+	float3 normal = ((tri1 - tri0).Cross(tri2 - tri0)); normal.Normalize();
+	float3 toTri = rayOrigin - tri0; toTri.Normalize();
+	float proj = toTri.Dot(normal);
+	if (proj < 0)return -1;
+	//mat3 m = mat3(-rayDir, tri.vtx1.xyz - tri.vtx0.xyz, tri.vtx2.xyz - tri.vtx0.xyz);
+	float4x4 m(-rayDir, tri1 - tri0, tri2 - tri0);
+	float3 op0 = rayOrigin - tri0;
+	float3 tuv = XMVector3Transform(op0, m.Invert());
+	float4 tuvw = float4(tuv.x, tuv.y, tuv.z, 0);
+	tuvw.w = 1 - tuvw.y - tuvw.z;
+	if (tuvw.y > 0 && tuvw.y < 1 && tuvw.z > 0 && tuvw.z < 1 && tuvw.w > 0 && tuvw.w < 1)
+		return tuvw.x;
+	else return -1;
+}
+inline float Object::sphereTest(float3 rayDir, float3 rayOrigin, float3 centre, float radius)
+{
+	float3 oc = rayOrigin - centre;
+	if (oc.Length() < radius)return -1;//if inside cirkel
+	float a = rayDir.Dot(oc);
+	float b = oc.Dot(oc) - pow(radius, 2);
+	float f = pow(a, 2) - b;
+	float sqrtF = sqrt(f);
+	float t1 = -a + sqrtF;
+	float t2 = -a - sqrtF;
+	if (f < 0) { //if imaginary number
+		return -1;
+	}
+	return min(t1, t2);
+}
 inline Array<Vertex>& Object::getMesh()
 {
 	return mesh;
@@ -189,6 +223,36 @@ inline void Object::draw()
 		gDeviceContext->Draw(meshPartSize[i],startVert);
 	}
 
+}
+/*cast a ray in world space and return position of collision*/
+inline float Object::castRayOnMesh(float3 rayPos, float3 rayDir)
+{
+	float4x4 mWorld = getWorldMatrix();
+	float4x4 mInvWorld = mWorld.Invert();
+	float3 lrayPos = XMVector4Transform(float4(rayPos.x,rayPos.y,rayPos.z,1),mInvWorld);
+	float3 lrayDir = XMVector4Transform(float4(rayDir.x,rayDir.y,rayDir.z,0),mInvWorld);
+	lrayDir.Normalize();
+	//check if close
+	//if (sphereTest(rayDir, rayPos, float3(0, 0, 0), 1) > 0) {
+		//find the exact point
+		float closest = -1;
+		int length = mesh.length() / 3;
+		for (int i = 0; i < length; i++)
+		{
+			int index = i * 3;
+			float3 v0 = mesh[index + 0].position;
+			float3 v1 = mesh[index + 1].position;
+			float3 v2 = mesh[index + 2].position;
+			float t = triangleTest(lrayDir, lrayPos, v0, v1, v2);
+			if ((t > 0 && t < closest) || closest < 0)closest = t;
+		}
+		if (closest > 0) {
+			float3 target = XMVector3Transform(lrayPos + lrayDir * closest, mWorld);
+			return (target.x - rayPos.x) / rayDir.x;
+		}
+		else return -1;
+	//}
+	return -1;
 }
 
 inline Object::Object()
