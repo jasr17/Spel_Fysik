@@ -14,6 +14,10 @@ private:
 	float3 position = float3(0,0,0);
 	float3 rotation = float3(0,0,0);
 	float3 scale = float3(1,1,1);
+
+	float2 MinMaxXPosition = float2(-1, -1);//.x is min, .y is max
+	float2 MinMaxYPosition = float2(-1, -1);
+	float2 MinMaxZPosition = float2(-1, -1);
 	Array<int> meshPartSize;
 	Array<Vertex> mesh;
 	Array<MaterialPart> materials;
@@ -36,18 +40,25 @@ private:
 		return r;
 	}
 	float triangleTest(float3 rayDir, float3 rayOrigin, float3 tri0, float3 tri1, float3 tri2);
-	float sphereTest(float3 rayDir, float3 rayOrigin, float3 centre, float radius);
+	float obbTest(float3 rayDir, float3 rayOrigin, float3 boxPos, float3 boxScale);
+	bool findMinMaxValues();
 public:
 	Array<Vertex>& getMesh();
 	float4x4 getWorldMatrix();
 	bool loadMesh(string OBJFile, typeOfShading ToS);
 	void setPosition(float3 pos);
+	void setRotation(float3 rot);
 	void rotateX(float x);
 	void rotateY(float y);
 	void rotateZ(float z);
 	void setScale(float3 _scale);
 	void move(float3 offset);
 	void draw();
+	float3 getBoundingBoxPos() const;
+	float3 getBoundingBoxScale() const;
+	float3 getRotation() const;
+	float3 getPosition() const;
+	float3 getScale() const;
 	float castRayOnMesh(float3 rayPos, float3 rayDir);
 	Object();
 	~Object();
@@ -138,20 +149,53 @@ inline float Object::triangleTest(float3 rayDir, float3 rayOrigin, float3 tri0, 
 		return tuvw.x;
 	else return -1;
 }
-inline float Object::sphereTest(float3 rayDir, float3 rayOrigin, float3 centre, float radius)
+inline float Object::obbTest(float3 rayDir, float3 rayOrigin, float3 boxPos, float3 boxScale)
 {
-	float3 oc = rayOrigin - centre;
-	if (oc.Length() < radius)return -1;//if inside cirkel
-	float a = rayDir.Dot(oc);
-	float b = oc.Dot(oc) - pow(radius, 2);
-	float f = pow(a, 2) - b;
-	float sqrtF = sqrt(f);
-	float t1 = -a + sqrtF;
-	float t2 = -a - sqrtF;
-	if (f < 0) { //if imaginary number
-		return -1;
+		//SLABS CALULATIONS(my own)
+	float4 data[3] = { float4(1,0,0,boxScale.x),float4(0,1,0,boxScale.y),float4(0,0,1,boxScale.z) };//{o.u_hu,o.v_hv,o.w_hw};
+	float Tmin = -99999999,Tmax = 9999999999;
+	for(int i = 0; i < 3; i++){
+		float3 tempNormal = float3(data[i].x, data[i].y, data[i].z);
+		float3 center1 = boxPos + tempNormal*data[i].w;
+		float3 center2 = boxPos - tempNormal*data[i].w;
+		float npd = tempNormal.Dot(rayDir);
+		if(npd != 0){
+			float t1 = (tempNormal.Dot(center1)- tempNormal.Dot(rayOrigin))/npd;
+			float t2 = (tempNormal.Dot(center2)- tempNormal.Dot(rayOrigin))/npd;
+			if(t1 > t2){
+				float temp = t1;
+				t1 = t2; t2 = temp;
+			}
+			if(t1 > Tmin){
+				Tmin = t1;
+			}
+			if(t2 < Tmax) Tmax = t2;
+		}
+		else return -1;
 	}
-	return min(t1, t2);
+	if(Tmin < Tmax) return Tmin;
+	else return -1;
+}
+inline bool Object::findMinMaxValues()
+{
+	if (mesh.length() > 0) {
+
+		for (int i = 0; i < mesh.length(); i++)
+		{
+			float3 p = mesh[i].position;
+			if (p.x > MinMaxXPosition.y || MinMaxXPosition.y == -1)MinMaxXPosition.y = p.x;
+			if (p.x < MinMaxXPosition.x || MinMaxXPosition.x == -1)MinMaxXPosition.x = p.x;
+			
+			if (p.y > MinMaxYPosition.y || MinMaxYPosition.y == -1)MinMaxYPosition.y = p.y;
+			if (p.y < MinMaxYPosition.x || MinMaxYPosition.x == -1)MinMaxYPosition.x = p.y;
+
+			if (p.z > MinMaxZPosition.y || MinMaxZPosition.y == -1)MinMaxZPosition.y = p.z;
+			if (p.z < MinMaxZPosition.x || MinMaxZPosition.x == -1)MinMaxZPosition.x = p.z;
+		}
+
+		return true;
+	}
+	else return false;
 }
 inline Array<Vertex>& Object::getMesh()
 {
@@ -168,6 +212,7 @@ inline bool Object::loadMesh(string OBJFile, typeOfShading ToS)
 	if (!loadFromFile(OBJFile)) {
 		if(ToS == typeOfShading::smoothShading)averagePointTriangleNormals();
 		mesh = createTriangularMesh(meshPartSize);
+		findMinMaxValues();
 		getMaterialParts(materials);
 		reset();
 		createBuffers();
@@ -181,6 +226,10 @@ inline bool Object::loadMesh(string OBJFile, typeOfShading ToS)
 inline void Object::setPosition(float3 pos)
 {
 	position = pos;
+}
+inline void Object::setRotation(float3 rot)
+{
+	rotation = rot;
 }
 inline void Object::rotateX(float x)
 {
@@ -209,7 +258,8 @@ inline void Object::draw()
 	gDeviceContext->IASetVertexBuffers(0,1,&vertexBuffer,&strides,&offset);
 	gDeviceContext->PSSetConstantBuffers(2,1,&materialBuffer);
 
-	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
 	for (int i = 0; i < meshPartSize.length(); i++)
 	{
@@ -224,6 +274,28 @@ inline void Object::draw()
 	}
 
 }
+inline float3 Object::getRotation() const
+{
+	return rotation;
+}
+inline float3 Object::getPosition() const
+{
+	return position;
+}
+inline float3 Object::getScale() const
+{
+	return scale;
+}
+/*get bounding box position in world space*/
+inline float3 Object::getBoundingBoxPos() const
+{
+	return position + float3(scale.x *(MinMaxXPosition.x + MinMaxXPosition.y) / 2, scale.y*(MinMaxYPosition.x + MinMaxYPosition.y) / 2, scale.z* (MinMaxZPosition.x + MinMaxZPosition.y) / 2);
+}
+/*get bounding box scale/size in world space*/
+inline float3 Object::getBoundingBoxScale() const
+{
+	return float3(scale.x*(MinMaxXPosition.y - MinMaxXPosition.x) / 2, scale.y* (MinMaxYPosition.y - MinMaxYPosition.x) / 2, scale.z* (MinMaxZPosition.y - MinMaxZPosition.x) / 2);
+}
 /*cast a ray in world space and return position of collision*/
 inline float Object::castRayOnMesh(float3 rayPos, float3 rayDir)
 {
@@ -232,8 +304,11 @@ inline float Object::castRayOnMesh(float3 rayPos, float3 rayDir)
 	float3 lrayPos = XMVector4Transform(float4(rayPos.x,rayPos.y,rayPos.z,1),mInvWorld);
 	float3 lrayDir = XMVector4Transform(float4(rayDir.x,rayDir.y,rayDir.z,0),mInvWorld);
 	lrayDir.Normalize();
+	//get bounding box in local space
+	float3 bPos = float3((MinMaxXPosition.x + MinMaxXPosition.y) / 2, (MinMaxYPosition.x + MinMaxYPosition.y) / 2, (MinMaxZPosition.x + MinMaxZPosition.y) / 2);
+	float3 bScale = float3((MinMaxXPosition.y - MinMaxXPosition.x) / 2, (MinMaxYPosition.y - MinMaxYPosition.x) / 2, (MinMaxZPosition.y - MinMaxZPosition.x) / 2);
 	//check if close
-	//if (sphereTest(rayDir, rayPos, float3(0, 0, 0), 1) > 0) {
+	if (obbTest(lrayDir, lrayPos, bPos,bScale) > 0) {
 		//find the exact point
 		float closest = -1;
 		int length = mesh.length() / 3;
@@ -251,7 +326,7 @@ inline float Object::castRayOnMesh(float3 rayPos, float3 rayDir)
 			return (target.x - rayPos.x) / rayDir.x;
 		}
 		else return -1;
-	//}
+	}
 	return -1;
 }
 

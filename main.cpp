@@ -21,7 +21,8 @@ float deltaTime = 0;
 Array<float3>swordPositions(10);
 float3 lookPos(0,0,0);
 Object sword;
-Object ball;
+Object sphere;
+Object cube;
 Terrain terrain;
 
 std::unique_ptr<DirectX::Keyboard> m_keyboard;
@@ -376,6 +377,15 @@ void mousePicking(float screenSpace_x, float screenSpace_y) {
 	}
 }
 
+void drawBoundingBox(Object obj) {
+	shader_object_onlyMesh.bindShadersAndLayout();
+	cube.setRotation(obj.getRotation());
+	cube.setPosition(obj.getBoundingBoxPos());
+	cube.setScale(obj.getBoundingBoxScale());
+	updateMatrixBuffer(cube.getWorldMatrix());
+	cube.draw();
+}
+
 void Render()
 {
 	// clear the back buffer to a deep blue
@@ -393,20 +403,21 @@ void Render()
 		sword.rotateY(deltaTime*XM_2PI*0.25*(1.0f / 4));
 		updateMatrixBuffer(sword.getWorldMatrix());
 		sword.draw();
+		
 	}
 	shader_object_onlyMesh.bindShadersAndLayout();
 	//lights
 	for (int i = 0; i < lights.lightCount.x; i++)
 	{
-		ball.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
-		ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.03);
-		updateMatrixBuffer(ball.getWorldMatrix());
-		ball.draw();
+		sphere.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
+		sphere.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.03);
+		updateMatrixBuffer(sphere.getWorldMatrix());
+		sphere.draw();
 	}
-	ball.setScale(float3(1, 1, 1)*0.1);
-	ball.setPosition(lookPos);
-	updateMatrixBuffer(ball.getWorldMatrix());
-	ball.draw();
+	sphere.setScale(float3(1, 1, 1)*0.1);
+	sphere.setPosition(lookPos);
+	updateMatrixBuffer(sphere.getWorldMatrix());
+	sphere.draw();
 	//terrain
 	shader_terrain.bindShadersAndLayout();
 	updateMatrixBuffer(terrain.getWorldMatrix());
@@ -444,7 +455,9 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		sword.loadMesh("Meshes/Sword", flatShading);
 		sword.setScale(float3(0.1,0.1,0.1));
 
-		ball.loadMesh("Meshes/ball", smoothShading);
+		sphere.loadMesh("Meshes/sphere", smoothShading);
+
+		cube.loadMesh("Meshes/cube", flatShading);
 
 		terrain.create(XMINT2(200,200),10,5,L"Images/heightMap2.png");
 
