@@ -85,6 +85,10 @@ ID3D11Buffer* gMatrixBuffer = nullptr;
 ID3D11Buffer* gLightBuffer = nullptr;
 ID3D11Buffer* gCameraBuffer = nullptr;
 
+// Things for shadow mapping
+ID3D11DepthStencilView* gShadowMap;
+ID3D11ShaderResourceView* gShaderResourceViewDepth;
+
 struct ShaderSet {
 protected:
 	ID3D11InputLayout* gVertexLayout = nullptr;
@@ -348,6 +352,45 @@ void updateMatrixBuffer(float4x4 worldMat) {
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
 
+void createShadowMap() {
+	// Create texture space
+	D3D11_TEXTURE2D_DESC texDesc;
+	memset(&texDesc, 0, sizeof(texDesc));
+	texDesc.Width = Win_WIDTH;
+	texDesc.Height = Win_HEIGHT;
+	texDesc.ArraySize = 1;
+	texDesc.MipLevels = 1;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	texDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+
+	ID3D11Texture2D* pDepthBuffer = nullptr;
+	gDevice->CreateTexture2D(&texDesc, NULL, &pDepthBuffer);
+
+	// Create depth buffer object
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvd;
+	memset(&dsvd, 0, sizeof(dsvd));
+	dsvd.Format = texDesc.Format;
+	dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+
+	gDevice->CreateDepthStencilView(pDepthBuffer, &dsvd, &gShadowMap);
+
+	// Create a shader resource view
+	D3D11_SHADER_RESOURCE_VIEW_DESC depthSRVDesc;
+	memset(&depthSRVDesc, 0, sizeof(depthSRVDesc));
+	depthSRVDesc.Format = texDesc.Format;
+	depthSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	depthSRVDesc.Texture2D.MostDetailedMip = 0;
+	depthSRVDesc.Texture2D.MipLevels = 1;
+
+	gDevice->CreateShaderResourceView(pDepthBuffer, &depthSRVDesc, &gShaderResourceViewDepth);
+
+	//gDeviceContext->OMSetRenderTargets(1, NULL, gShadowMap);
+
+	pDepthBuffer->Release();
+}
+
+
 void Render()
 {
 	// clear the back buffer to a deep blue
@@ -559,6 +602,9 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		gSwapChain->Release();
 		gDevice->Release();
 		gDeviceContext->Release();
+
+		gShadowMap->Release();
+		gShaderResourceViewDepth->Release();
 		DestroyWindow(wndHandle);
 	}
 
