@@ -1,6 +1,8 @@
 struct VS_IN
 {
 	float3 Pos : Position;
+	float2 TexCoord : TexCoordinate;
+	float3 Normal : Normal;
 };
 struct VS_OUT
 {

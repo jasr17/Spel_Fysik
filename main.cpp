@@ -244,8 +244,8 @@ public:
 		}
 		pVS->Release();
 
-		createGeometryShader(geometryName);
-		createFragmentShader(fragmentName);
+		if (geometryName != NULL)createGeometryShader(geometryName);
+		if (fragmentName != NULL)createFragmentShader(fragmentName);
 		return true;
 	}
 	void bindShadersAndLayout() {
@@ -276,6 +276,7 @@ public:
 ShaderSet shader_object;
 ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
+ShaderSet Shader_ShadowMap;
 
 void CreateLightBuffer() {
 	D3D11_BUFFER_DESC desc;
@@ -471,6 +472,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		shader_object.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment.hlsl");
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex_Terrain.hlsl", L"Effects/Geometry_Terrain.hlsl", L"Effects/Fragment_Terrain.hlsl");
+		Shader_ShadowMap.createShaders(L"Effects/Light.hlsl", NULL, NULL);
 
 		ShowWindow(wndHandle, nCmdShow);
 
@@ -603,8 +605,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		gDevice->Release();
 		gDeviceContext->Release();
 
-		gShadowMap->Release();
-		gShaderResourceViewDepth->Release();
+		//gShadowMap->Release();
+		//gShaderResourceViewDepth->Release();
 		DestroyWindow(wndHandle);
 	}
 

@@ -64,7 +64,7 @@
     <FxCompile Include="Effects\Fragment_onlyMesh.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
-    <FxCompile Include="Vertex_Light.hlsl">
+    <FxCompile Include="Effects\Vertex_Light.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
   </ItemGroup>
