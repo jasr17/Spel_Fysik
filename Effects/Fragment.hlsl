@@ -56,7 +56,7 @@ float4 PS_main(GeoOut input) : SV_Target
             float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
             float specular = pow(max(dot(reflekt, toCam), 0), specularReflectivity.w);
 
-            finalColor += (diffuseReflectivity.rgb * textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular * specularReflectivity.rgb) / pow(distToLight, 1.5);
+            finalColor += (diffuseReflectivity.rgb * textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular * specularReflectivity.rgb) / pow(distToLight, 1);
         }
     }
     //return shadowedTextureColor

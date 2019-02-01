@@ -3,6 +3,7 @@
 #include <WICTextureLoader.h>
 extern ID3D11Device* gDevice;
 extern ID3D11DeviceContext* gDeviceContext;
+
 class Terrain
 {
 private:
@@ -27,12 +28,14 @@ private:
 	void freeBuffers();
 	void reset();
 public:
+	float3 getTerrainSize() const;
 	void rotateY(float y);
 	float4x4 getWorldMatrix();
 	float getHeightOfTerrainFromCoordinates(float x, float y);
+	float3 getPointOnTerrainFromCoordinates(float x, float z);
 	void draw();
-	bool create(XMINT2 _tileCount, float desiredMapSize, float height, const wchar_t* filePath);
-	Terrain(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath);
+	bool create(XMINT2 _tileCount, float desiredMapSize, float height, const wchar_t* filePath, typeOfShading shading);
+	Terrain(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath, typeOfShading shading);
 	Terrain();
 	~Terrain();
 };
@@ -245,6 +248,10 @@ inline void Terrain::reset()
 	rotation = float3(0, 0, 0);
 	scale = float3(1, 1, 1);
 }
+inline float3 Terrain::getTerrainSize() const
+{
+	return scale;
+}
 inline void Terrain::rotateY(float y)
 {
 	rotation.y += y;
@@ -263,18 +270,36 @@ inline float Terrain::getHeightOfTerrainFromCoordinates(float x, float y)
 		float fy = Y * tileCount.y;
 		int ix = fx;
 		int iy = fy;
-		float3 p1 = grid[ix + 0][iy + 0].position;
-		float3 p2 = grid[ix + 1][iy + 0].position;
-		float3 p3 = grid[ix + 0][iy + 1].position;
-		float3 p4 = grid[ix + 1][iy + 1].position;
-		float3 p12 = p1 + (p2 - p1)*(ix - fx);
-		float3 p34 = p3 + (p4 - p3)*(ix - fx);
-		float3 p1234 = p12 + (p34 - p12)*(iy - fy);
-		return p1234.y*scale.y;
+		if ((fx-ix) < (fy-iy)) {
+			float3 p1 = grid[ix + 0][iy + 0].position*scale;
+			float3 p2 = grid[ix + 1][iy + 0].position*scale;
+			float3 p3 = grid[ix + 0][iy + 1].position*scale;
+			float3 p4 = grid[ix + 1][iy + 1].position*scale;
+			float3 pt = p3 + 2 * ((float3)((p1 + p4) / 2) - p3);
+			float3 p12 = p1 + (pt - p1)*(fx - ix);
+			float3 p34 = p3 + (p4 - p3)*(fx - ix);
+			float3 p1234 = p12 + (p34 - p12)*(fy - iy);
+			return p1234.y;
+		}
+		else {
+			float3 p1 = grid[ix + 0][iy + 0].position*scale;
+			float3 p2 = grid[ix + 1][iy + 0].position*scale;
+			float3 p3 = grid[ix + 0][iy + 1].position*scale;
+			float3 p4 = grid[ix + 1][iy + 1].position*scale;
+			float3 pt = p2 + 2 * ((float3)((p1 + p4) / 2) - p2);
+			float3 p12 = p1 + (p2 - p1)*(fx - ix);
+			float3 p34 = pt + (p4 - pt)*(fx - ix);
+			float3 p1234 = p12 + (p34 - p12)*(fy - iy);
+			return p1234.y;
+		}
 	}
 	else {
 		return 0;
 	}
+}
+inline float3 Terrain::getPointOnTerrainFromCoordinates(float x, float z)
+{
+	return float3(x,getHeightOfTerrainFromCoordinates(x,z),z);
 }
 inline void Terrain::draw()
 {
@@ -287,7 +312,7 @@ inline void Terrain::draw()
 	gDeviceContext->Draw(mesh.length(),0);
 }
 /*creates mesh and loads texture. Returns true if failed*/
-inline bool Terrain::create(XMINT2 _tileCount, float desiredMapSize, float height, const wchar_t* filePath)
+inline bool Terrain::create(XMINT2 _tileCount, float desiredMapSize, float height, const wchar_t* filePath, typeOfShading shading)
 {
 	bool check = true;
 	if (_tileCount.x > 0 && _tileCount.y > 0) {
@@ -301,15 +326,16 @@ inline bool Terrain::create(XMINT2 _tileCount, float desiredMapSize, float heigh
 		}
 		createGrid();
 		applyHeightToGrid(filePath);
-		smoothSurface(0.5);
-		convertGridToMesh_smoothShading();
+		smoothSurface(1);
+		if(shading == smoothShading)convertGridToMesh_smoothShading();
+		else if (shading == flatShading)convertGridToMesh_flatShading();
 		createBuffers();
 	}
 	return check;
 }
-inline Terrain::Terrain(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath)
+inline Terrain::Terrain(XMINT2 _tileCount, float _tileSize, float height, const wchar_t* filePath, typeOfShading shading)
 {
-	create(_tileCount, _tileSize, height, filePath);
+	create(_tileCount, _tileSize, height, filePath, shading);
 }
 inline Terrain::Terrain()
 {
