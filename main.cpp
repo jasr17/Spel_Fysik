@@ -276,7 +276,7 @@ public:
 ShaderSet shader_object;
 ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
-ShaderSet Shader_ShadowMap;
+ShaderSet shader_shadowMap;
 
 void CreateLightBuffer() {
 	D3D11_BUFFER_DESC desc;
@@ -337,7 +337,7 @@ void CreateCameraBuffer() {
 	gDeviceContext->PSSetConstantBuffers(1, 1, &gCameraBuffer);
 }
 
-void updateMatrixBuffer(float4x4 worldMat) {
+void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
 	XMFLOAT3 at = cameraPosition+cameraForward;
 	XMFLOAT3 up(0, 1, 0);
 	XMMATRIX mView = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
@@ -353,7 +353,7 @@ void updateMatrixBuffer(float4x4 worldMat) {
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
 
-void createShadowMap() {
+void CreateShadowMap() {
 	// Create texture space
 	D3D11_TEXTURE2D_DESC texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
@@ -386,11 +386,40 @@ void createShadowMap() {
 
 	gDevice->CreateShaderResourceView(pDepthBuffer, &depthSRVDesc, &gShaderResourceViewDepth);
 
-	//gDeviceContext->OMSetRenderTargets(1, NULL, gShadowMap);
+	gDeviceContext->OMSetRenderTargets(1, NULL, gShadowMap);
 
 	pDepthBuffer->Release();
 }
 
+void Render_ShadowMap()
+{
+	// Clear shadow map
+	gDeviceContext->ClearDepthStencilView(gShadowMap, D3D11_CLEAR_DEPTH, 1, 0);
+	
+	shader_shadowMap.bindShadersAndLayout();
+
+	// Draw all objects
+	//Sword
+	for (int i = 0; i < swordPositions.length(); i++)
+	{
+		sword.setPosition(swordPositions[i]);
+		sword.rotateY(deltaTime*XM_2PI*0.25*(1.0f / 4));
+		updateMatrixBuffer(sword.getWorldMatrix());
+		sword.draw();
+	}
+	//lights
+	for (int i = 0; i < lights.lightCount.x; i++)
+	{
+		ball.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
+		ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.01);
+		updateMatrixBuffer(ball.getWorldMatrix());
+		ball.draw();
+	}
+	//terrain
+	shader_terrain.bindShadersAndLayout();
+	updateMatrixBuffer(terrain.getWorldMatrix());
+	terrain.draw();
+}
 
 void Render()
 {
@@ -451,6 +480,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		CreateMatrixDataBuffer();
 
+		//CreateShadowMap();
+
 		lights.randomize();
 
 		sword.loadMesh("Meshes/Sword");
@@ -472,7 +503,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		shader_object.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment.hlsl");
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex_Terrain.hlsl", L"Effects/Geometry_Terrain.hlsl", L"Effects/Fragment_Terrain.hlsl");
-		Shader_ShadowMap.createShaders(L"Effects/Light.hlsl", NULL, NULL);
+		shader_shadowMap.createShaders(L"Effects/Light.hlsl", NULL, NULL);
 
 		ShowWindow(wndHandle, nCmdShow);
 
