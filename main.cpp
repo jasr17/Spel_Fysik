@@ -16,6 +16,8 @@
 #define Win_WIDTH 1920*0.75//640
 #define Win_HEIGHT 1080*0.75//480
 
+#define DEF_BUFFERCOUNT 3
+
 float deltaTime = 0;
 
 Array<Mesh> meshes;
@@ -41,6 +43,19 @@ struct LightData {
 	float4 pos[10];
 	float4 color[10];//.a is intensity
 } lights;
+
+//Deffered shading
+struct RenderTarget {
+	ID3D11RenderTargetView		*renderTragetVeiw			= nullptr;
+	ID3D11Texture2D				*texture					= nullptr;
+	ID3D11ShaderResourceView	*shaderResourceVeiw			= nullptr;
+};
+
+RenderTarget geometryBuffer[DEF_BUFFERCOUNT];
+void BindFirstPass();
+void BindSecondPass();
+
+
 //player variables
 bool grounded = false;
 float gravityForce = 3;
@@ -625,6 +640,17 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 	}
 
 	return (int) msg.wParam;
+}
+
+void BindFirstPass()
+{
+	//gDeviceContext->IASetInputLayout();
+	ID3D11RenderTargetView* renderTargets[] = {
+		geometryBuffer[0].renderTragetVeiw,
+		geometryBuffer[1].renderTragetVeiw,
+		geometryBuffer[2].renderTragetVeiw,
+	};
+	gDeviceContext->OMSetRenderTargets(DEF_BUFFERCOUNT, renderTargets, gDepthStencilView);
 }
 
 HWND InitWindow(HINSTANCE hInstance)

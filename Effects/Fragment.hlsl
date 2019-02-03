@@ -42,6 +42,7 @@ float4 PS_main(GeoOut input) : SV_Target
     //resource color
     float3 textureColor = map_diffuse;
     float3 finalColor = textureColor * ambient * ambientReflectivity.rgb;
+
     for (int i = 0; i < lightCount.x; i++)
     {
         float3 toLight = normalize(lightPos[i].xyz - posW);
@@ -59,6 +60,7 @@ float4 PS_main(GeoOut input) : SV_Target
             finalColor += (diffuseReflectivity.rgb * textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular * specularReflectivity.rgb) / pow(distToLight, 1);
         }
     }
+
     //return shadowedTextureColor
     finalColor = clamp(finalColor, float3(0,0,0), float3(1, 1, 1));
     return float4(finalColor, 1);
