@@ -13,7 +13,7 @@ struct GeoOut
 };
 cbuffer cbuffs
 {
-    matrix mWorld,mInvTraWorld,mView,mProj,mShadMapProj;
+    matrix mWorld,mInvTraWorld,mView,mProj, mLightWVP;
 };
 
 [maxvertexcount(3)]
