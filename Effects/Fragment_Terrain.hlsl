@@ -1,3 +1,6 @@
+Texture2D fullScreenTex : register(t0);
+SamplerState mySampler;
+
 struct GeoOut
 {
     float4 PosW : POSITION;
@@ -18,7 +21,13 @@ cbuffer cameraBuffer : register(b1)
 
 cbuffer matrixBuffer : register(b2)
 {
-	matrix mWorld, mInvTraWorld, mView, mProj, mShadMapProj;
+	matrix mWorld, mInvTraWorld, mView, mProj, mLightWVP;
+}
+
+bool checkShadowMap(float4 pos)
+{
+	float4 projectedPos = mul(mShadMapProj, pos);
+
 }
 
 float4 PS_main(GeoOut input) : SV_Target

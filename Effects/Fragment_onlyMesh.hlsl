@@ -18,7 +18,7 @@ cbuffer cameraBuffer : register(b1)
 
 cbuffer matrixBuffer : register(b2)
 {
-	matrix mWorld, mInvTraWorld, mView, mProj, mShadMapProj;
+	matrix mWorld, mInvTraWorld, mView, mProj, mLightWVP;
 }
 
 float4 PS_main(GeoOut input) : SV_Target

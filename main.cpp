@@ -29,7 +29,7 @@ std::unique_ptr<Mouse> mouse = std::make_unique<Mouse>();
 float2 mousePos;
 
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective, mShadowMapProjection;
+	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective, mLightWVP;
 };
 struct LightData {
 	const float4 lightCount = float4(10, 0, 0,0);
@@ -355,7 +355,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	mat.mView = XMMatrixTranspose(view);
 	mat.mPerspective = XMMatrixTranspose(perspective);
 
-	mat.mShadowMapProjection = XMMatrixMultiply(XMMatrixMultiply(XMMatrixMultiply(XMMatrixInverse(nullptr, perspective), XMMatrixInverse(nullptr, view)), gLightView), perspective); // Just nu annat format än andra(utan transponering) Ändrar sen för konsekvent
+	mat.mLightWVP = XMMatrixMultiply(XMMatrixMultiply(worldMat, gLightView),perspective); // Just nu annat format än andra(utan transponering) Ändrar sen för konsekvent
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
@@ -462,6 +462,7 @@ void Render()
 	// use DeviceContext to talk to the API
 	gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
 	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH,1,0);
+	gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceViewDepth);
 
 	shader_object.bindShadersAndLayout();
 	//sword
@@ -513,10 +514,11 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		CreateMatrixDataBuffer();
 
-		//CreateShadowMap();
-		setLightView();
+		CreateShadowMap();
 
 		lights.randomize();
+
+		setLightView();
 
 		sword.loadMesh("Meshes/Sword");
 		sword.setScale(float3(0.1,0.1,0.1));
@@ -651,6 +653,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x,cameraPosition.y,cameraPosition.z,1);
 				gDeviceContext->UpdateSubresource(gCameraBuffer, 0, 0, &cpD, 0, 0);
 
+				Render_ShadowMap();
 				Render(); //8. Rendera
 
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
