@@ -1,10 +1,11 @@
-Texture2D fullScreenTex : register(t0);
+Texture2D shadowMap : register(t0);
 SamplerState mySampler;
 
 struct GeoOut
 {
     float4 PosW : POSITION;
     float4 PosH : SV_POSITION;
+	float4 PosL : POSITION2;
     float2 TexCoord : TEXCOORD;
     float3 Normal : NORMAL;
 };
@@ -19,15 +20,13 @@ cbuffer cameraBuffer : register(b1)
     float4 camPos;
 }
 
-cbuffer matrixBuffer : register(b2)
-{
-	matrix mWorld, mInvTraWorld, mView, mProj, mLightWVP;
-}
-
 bool checkShadowMap(float4 pos)
 {
-	float4 projectedPos = mul(mShadMapProj, pos);
+	pos.xy /= pos.w;
+	float2 uvCoord = float2(0.5f*pos.x + 0.5f, -0.5f*pos.y + 0.5f);
 
+	float depth = pos.z / pos.w;
+	return depth - 0.05 < shadowMap.Sample(mySampler, pos.xy).r;
 }
 
 float4 PS_main(GeoOut input) : SV_Target
@@ -53,7 +52,7 @@ float4 PS_main(GeoOut input) : SV_Target
         {
             //diffuse
             float distToLight = length(lightPos[i].xyz - input.PosW.xyz);
-            float diffuse = dotNormaltoLight;
+			float diffuse = dotNormaltoLight;// *checkShadowMap(input.PosL);
             //specular
             float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
             float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
@@ -65,5 +64,6 @@ float4 PS_main(GeoOut input) : SV_Target
 
     //return shadowedTextureColor
     finalColor = clamp(finalColor, float3(0, 0, 0), float3(1, 1, 1));
-    return float4(finalColor, 1);
+    //return float4(finalColor, 1);
+	return float4(shadowMap.Sample(mySampler, input.PosL.xy).r, 0, 0, 0);
 }

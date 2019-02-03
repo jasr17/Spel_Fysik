@@ -2,6 +2,7 @@ struct GeoOut
 {
     float4 PosW : POSITION;
     float4 PosH : SV_POSITION;
+	float4 PosL : POSITION;
     float2 TexCoord : TEXCOORD;
     float3 Normal : NORMAL;
 };
@@ -14,11 +15,6 @@ cbuffer lightBuffer : register(b0)
 cbuffer cameraBuffer : register(b1)
 {
     float4 camPos;
-}
-
-cbuffer matrixBuffer : register(b2)
-{
-	matrix mWorld, mInvTraWorld, mView, mProj, mLightWVP;
 }
 
 float4 PS_main(GeoOut input) : SV_Target

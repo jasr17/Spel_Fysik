@@ -8,12 +8,13 @@ struct GeoOut
 {
     float4 PosW : POSITION;
     float4 PosH : SV_POSITION;
+	float4 PosL : POSITION2;
     float2 TexCoord : TEXCOORD;
     float3 Normal : NORMAL;
 };
 cbuffer cbuffs : register(b0)
 {
-    matrix mWorld, mInvTraWorld, mWorldViewPerspective;
+    matrix mWorld, mInvTraWorld, mWorldViewPerspective, mLightWVP;
 };
 
 //-----------------------------------------------------------------------------------------
@@ -25,6 +26,7 @@ GeoOut VS_main(VS_IN input)
 
     output.PosW = mul(float4(input.Pos, 1), mWorld);
     output.PosH = mul(float4(input.Pos, 1), mWorldViewPerspective);
+	output.PosL = mul(mLightWVP, float4(input.Pos, 1));
     output.TexCoord = input.TexCoord;
     output.Normal = normalize(mul(float4(input.Normal, 0), mInvTraWorld).xyz);
 

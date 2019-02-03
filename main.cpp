@@ -85,11 +85,11 @@ XMMATRIX gLightView;		// Temp light view, may add it in lightData when I get it 
 
 struct ShaderSet {
 protected:
-	ID3D11InputLayout* gVertexLayout = nullptr;
+	ID3D11InputLayout* mVertexLayout = nullptr;
 
-	ID3D11VertexShader* gVertexShader = nullptr;
-	ID3D11GeometryShader* gGeometryShader = nullptr;
-	ID3D11PixelShader* gPixelShader = nullptr;
+	ID3D11VertexShader* mVertexShader = nullptr;
+	ID3D11GeometryShader* mGeometryShader = nullptr;
+	ID3D11PixelShader* mPixelShader = nullptr;
 	ID3DBlob* createVertexShader(LPCWSTR filename) {
 		ID3DBlob* pVS = nullptr;
 		ID3DBlob* errorBlob = nullptr;
@@ -125,7 +125,7 @@ protected:
 			pVS->GetBufferPointer(),
 			pVS->GetBufferSize(),
 			nullptr,
-			&gVertexShader
+			&mVertexShader
 		);
 		return pVS;
 	}
@@ -159,7 +159,7 @@ protected:
 			return result;
 		}
 
-		gDevice->CreateGeometryShader(pGS->GetBufferPointer(), pGS->GetBufferSize(), nullptr, &gGeometryShader);
+		gDevice->CreateGeometryShader(pGS->GetBufferPointer(), pGS->GetBufferSize(), nullptr, &mGeometryShader);
 
 		pGS->Release();
 	}
@@ -193,7 +193,7 @@ protected:
 			return result;
 		}
 
-		gDevice->CreatePixelShader(pPS->GetBufferPointer(), pPS->GetBufferSize(), nullptr, &gPixelShader);
+		gDevice->CreatePixelShader(pPS->GetBufferPointer(), pPS->GetBufferSize(), nullptr, &mPixelShader);
 		// we do not need anymore this COM object, so we release it.
 		pPS->Release();
 	}
@@ -230,32 +230,32 @@ public:
 					0
 				}
 			};
-			gDevice->CreateInputLayout(standardInputDesc, ARRAYSIZE(standardInputDesc), pVS->GetBufferPointer(), pVS->GetBufferSize(), &gVertexLayout);
+			gDevice->CreateInputLayout(standardInputDesc, ARRAYSIZE(standardInputDesc), pVS->GetBufferPointer(), pVS->GetBufferSize(), &mVertexLayout);
 		}
 		else {
-			gDevice->CreateInputLayout(inputDesc, inputDescCount, pVS->GetBufferPointer(), pVS->GetBufferSize(), &gVertexLayout);
+			gDevice->CreateInputLayout(inputDesc, inputDescCount, pVS->GetBufferPointer(), pVS->GetBufferSize(), &mVertexLayout);
 			delete[] inputDesc;
 		}
 		pVS->Release();
 
-		if (geometryName != NULL)createGeometryShader(geometryName);
-		if (fragmentName != NULL)createFragmentShader(fragmentName);
+		createGeometryShader(geometryName);
+		createFragmentShader(fragmentName);
 		return true;
 	}
 	void bindShadersAndLayout() {
-		gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
+		gDeviceContext->VSSetShader(mVertexShader, nullptr, 0);
 		gDeviceContext->HSSetShader(nullptr, nullptr, 0);
 		gDeviceContext->DSSetShader(nullptr, nullptr, 0);
-		gDeviceContext->GSSetShader(gGeometryShader, nullptr, 0);
-		gDeviceContext->PSSetShader(gPixelShader, nullptr, 0);
+		gDeviceContext->GSSetShader(mGeometryShader, nullptr, 0);
+		gDeviceContext->PSSetShader(mPixelShader, nullptr, 0);
 
-		gDeviceContext->IASetInputLayout(gVertexLayout);
+		gDeviceContext->IASetInputLayout(mVertexLayout);
 	}
 	void release() {
-		if (gVertexShader != nullptr)gVertexShader->Release();
-		if (gGeometryShader != nullptr)gGeometryShader->Release();
-		if (gPixelShader != nullptr)gPixelShader->Release();
-		if (gVertexLayout != nullptr)gVertexLayout->Release();
+		if (mVertexShader != nullptr)mVertexShader->Release();
+		if (mGeometryShader != nullptr)mGeometryShader->Release();
+		if (mPixelShader != nullptr)mPixelShader->Release();
+		if (mVertexLayout != nullptr)mVertexLayout->Release();
 	}
 	ShaderSet(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0){
 		createShaders(vertexName,geometryName,fragmentName,inputDesc,inputDescCount);
@@ -314,7 +314,6 @@ void CreateMatrixDataBuffer() {
 
 	gDevice->CreateBuffer(&desc,nullptr,&gMatrixBuffer);
 	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
-	gDeviceContext->PSSetConstantBuffers(2, 1, &gMatrixBuffer);
 }
 
 void CreateCameraBuffer() {
@@ -356,22 +355,6 @@ void setLightView(){
 	gLightView = XMMatrixLookAtLH(CamPos, LookAt, Up);
 }
 
-//void createShadowMapProjectionBuffer() { // Kanske tas bort
-//	D3D11_BUFFER_DESC desc;
-//	memset(&desc, 0, sizeof(desc));
-//	// what type of buffer will this be?
-//	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-//	// what type of usage (press F1, read the docs)
-//	desc.Usage = D3D11_USAGE_DEFAULT;
-//	// how big in bytes each element in the buffer is.
-//	desc.ByteWidth = sizeof(XMMATRIX);
-//
-//	gDevice->CreateBuffer(&desc, nullptr, &gShadowMapProjectionMatrix);
-//	gDeviceContext->PSSetConstantBuffers(2, 1, &gShadowMapProjectionMatrix);
-//}
-
-
-
 void CreateShadowMap() {
 	// Create texture space
 	D3D11_TEXTURE2D_DESC texDesc;
@@ -381,7 +364,7 @@ void CreateShadowMap() {
 	texDesc.ArraySize = 1;
 	texDesc.MipLevels = 1;
 	texDesc.SampleDesc.Count = 1;
-	texDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	texDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 	texDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
 
 	ID3D11Texture2D* pDepthBuffer = nullptr;
@@ -390,7 +373,7 @@ void CreateShadowMap() {
 	// Create depth buffer object
 	D3D11_DEPTH_STENCIL_VIEW_DESC dsvd;
 	memset(&dsvd, 0, sizeof(dsvd));
-	dsvd.Format = texDesc.Format;
+	dsvd.Format = DXGI_FORMAT_D32_FLOAT;
 	dsvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 
 	gDevice->CreateDepthStencilView(pDepthBuffer, &dsvd, &gShadowMap);
@@ -398,14 +381,14 @@ void CreateShadowMap() {
 	// Create a shader resource view
 	D3D11_SHADER_RESOURCE_VIEW_DESC depthSRVDesc;
 	memset(&depthSRVDesc, 0, sizeof(depthSRVDesc));
-	depthSRVDesc.Format = texDesc.Format;
+	depthSRVDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	depthSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	depthSRVDesc.Texture2D.MostDetailedMip = 0;
 	depthSRVDesc.Texture2D.MipLevels = 1;
 
 	gDevice->CreateShaderResourceView(pDepthBuffer, &depthSRVDesc, &gShaderResourceViewDepth);
 
-	gDeviceContext->OMSetRenderTargets(1, NULL, gShadowMap);
+	
 
 	pDepthBuffer->Release();
 }
@@ -414,33 +397,53 @@ void Render_ShadowMap(){
 	// Deactivates shader resource so it can be used as a render target view
 	ID3D11ShaderResourceView* nullRTV = { NULL };
 	gDeviceContext->PSSetShaderResources(0, 1, &nullRTV);
+	
+	gDeviceContext->OMSetRenderTargets(0, NULL, gShadowMap);
 
-	//// Clear shadow map
-	//gDeviceContext->ClearDepthStencilView(gShadowMap, D3D11_CLEAR_DEPTH, 1, 0);
-	//
-	//shader_shadowMap.bindShadersAndLayout();
+	// use DeviceContext to talk to the API
+	gDeviceContext->ClearDepthStencilView(gShadowMap, D3D11_CLEAR_DEPTH, 1, 0);
+	//gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceViewDepth);
 
-	//// Draw all objects
-	////Sword
-	//for (int i = 0; i < swordPositions.length(); i++)
-	//{
-	//	sword.setPosition(swordPositions[i]);
-	//	sword.rotateY(deltaTime*XM_2PI*0.25*(1.0f / 4));
-	//	updateMatrixBuffer(sword.getWorldMatrix());
-	//	sword.draw();
-	//}
-	////lights
-	//for (int i = 0; i < lights.lightCount.x; i++)
-	//{
-	//	ball.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
-	//	ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.01);
-	//	updateMatrixBuffer(ball.getWorldMatrix());
-	//	ball.draw();
-	//}
-	////terrain
-	//shader_terrain.bindShadersAndLayout();
-	//updateMatrixBuffer(terrain.getWorldMatrix());
-	//terrain.draw();
+	shader_shadowMap.bindShadersAndLayout();
+
+	//objects
+	for (int i = 0; i < objects.length(); i++)
+	{
+		updateMatrixBuffer(objects[i].getWorldMatrix());
+		objects[i].draw();
+	}
+	//lights
+	
+	for (int i = 0; i < lights.lightCount.x; i++)
+	{
+		sphere.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
+		sphere.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.03);
+		updateMatrixBuffer(sphere.getWorldMatrix());
+		sphere.draw();
+	}
+	//mousePicking sphere
+	
+	sphere.setScale(float3(1, 1, 1)*0.1);
+	sphere.setPosition(lookPos);
+	updateMatrixBuffer(sphere.getWorldMatrix());
+	sphere.draw();
+
+	sphere.setPosition(cameraPosition + float3(0, 0, 1));
+	//sphere.setScale(float3(0.1, 0.1, 1));
+	updateMatrixBuffer(sphere.getWorldMatrix());
+	sphere.draw();
+	sphere.setPosition(cameraPosition + float3(0, -1, 0));
+	//sphere.setScale(float3(0.1, 1, 0.1));
+	updateMatrixBuffer(sphere.getWorldMatrix());
+	sphere.draw();
+	sphere.setPosition(cameraPosition + float3(1, 0, 0));
+	//sphere.setScale(float3(1, 0.1, 0.1));
+	updateMatrixBuffer(sphere.getWorldMatrix());
+	//sphere.draw();
+	//terrain
+	
+	updateMatrixBuffer(terrain.getWorldMatrix());
+	terrain.draw();
 }
 
 void mousePicking(float screenSpace_x, float screenSpace_y) {
@@ -481,6 +484,8 @@ void drawBoundingBox(Object obj) {
 
 void Render()
 {
+	// set the render target as the back buffer
+	gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, gDepthStencilView);
 	// clear the back buffer to a deep blue
 	float clearColor[] = { 0.1, 0.1, 0.1, 1 };
 
@@ -557,6 +562,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		CreateMatrixDataBuffer();
 
 		CreateShadowMap();
+
 		terrain.create(XMINT2(200, 200), 10, 5, L"Images/heightMap2.png", smoothShading);
 		float3 sc = terrain.getTerrainSize();
 		//lights
@@ -605,7 +611,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		shader_object.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment.hlsl");
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_Terrain.hlsl");
-		shader_shadowMap.createShaders(L"Effects/Vertex_Light.hlsl", NULL, NULL);
+		shader_shadowMap.createShaders(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 
 		ShowWindow(wndHandle, nCmdShow);
 
@@ -734,8 +740,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		gDevice->Release();
 		gDeviceContext->Release();
 
-		//gShadowMap->Release();
-		//gShaderResourceViewDepth->Release();
+		gShadowMap->Release();
+		gShaderResourceViewDepth->Release();
 		DestroyWindow(wndHandle);
 	}
 
@@ -874,6 +880,7 @@ HRESULT CreateDirect3DContext(HWND wndHandle)
 
 		// set the render target as the back buffer
 		gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, gDepthStencilView);
+
 	}
 	return hr;
 }
