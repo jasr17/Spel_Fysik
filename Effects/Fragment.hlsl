@@ -44,16 +44,20 @@ float4 PS_main(GeoOut input) : SV_Target
     float3 finalColor = textureColor * ambient * ambientReflectivity.rgb;
     for (int i = 0; i < lightCount.x; i++)
     {
-        //diffuse
-        float distToLight = length(lightPos[i].xyz - posW);
         float3 toLight = normalize(lightPos[i].xyz - posW);
-        float diffuse = max(dot(normal, toLight),0);
-        //specular
-        float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
-        float3 reflekt = normalize(2 * dot(normal, toLight) * normal - toLight);
-        float specular = pow(max(dot(reflekt, toCam), 0), specularReflectivity.w);
+        float dotNormaltoLight = dot(normal, toLight); //dot(normal, toLight) if less than one then the triangle is facing the other way, ignore
+        if (dotNormaltoLight > 0)
+        {
+            //diffuse
+            float distToLight = length(lightPos[i].xyz - posW);
+            float diffuse = dotNormaltoLight;
+            //specular
+            float3 toCam = normalize(camPos.xyz - posW);
+            float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
+            float specular = pow(max(dot(reflekt, toCam), 0), specularReflectivity.w);
 
-        finalColor += (diffuseReflectivity.rgb * textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular * specularReflectivity.rgb) / pow(distToLight, 3);
+            finalColor += (diffuseReflectivity.rgb * textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular * specularReflectivity.rgb) / pow(distToLight, 1);
+        }
     }
     //return shadowedTextureColor
     finalColor = clamp(finalColor, float3(0,0,0), float3(1, 1, 1));

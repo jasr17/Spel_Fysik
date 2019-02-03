@@ -38,6 +38,9 @@
     <ClInclude Include="standardClasses.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -49,16 +52,7 @@
     <FxCompile Include="Effects\Fragment_Terrain.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
-    <FxCompile Include="Effects\Geometry.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
-    <FxCompile Include="Effects\Geometry_Terrain.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
     <FxCompile Include="Effects\Vertex.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
-    <FxCompile Include="Effects\Vertex_Terrain.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
     <FxCompile Include="Effects\Fragment_onlyMesh.hlsl">

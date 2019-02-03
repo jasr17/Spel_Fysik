@@ -18,6 +18,11 @@ using float3 = DirectX::SimpleMath::Vector3;
 using float4 = DirectX::SimpleMath::Vector4;
 using float4x4 = DirectX::SimpleMath::Matrix;
 
+enum typeOfShading {
+	flatShading,
+	smoothShading
+};
+
 struct Vertex {
 	float3 position;
 	float2 uv;
@@ -28,3 +33,7 @@ struct Vertex {
 		normal = _normal;
 	}
 };
+
+float random(float min, float max) {
+	return min + ((float)(rand() % 10000) / 10000)*(max - min);
+}

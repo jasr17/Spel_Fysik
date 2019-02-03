@@ -1,9 +1,5 @@
 #pragma once
-#include "OBJLoader.h"
-#include "standardClasses.h"
-
-extern ID3D11Device* gDevice;
-extern ID3D11DeviceContext* gDeviceContext;
+#include "Mesh.h"
 
 class Object : private OBJLoader
 {
@@ -11,140 +7,45 @@ private:
 	float3 position = float3(0,0,0);
 	float3 rotation = float3(0,0,0);
 	float3 scale = float3(1,1,1);
-	Array<int> meshPartSize;
-	Array<Vertex> mesh;
-	Array<MaterialPart> materials;
-	ID3D11Buffer* vertexBuffer = nullptr;
-	ID3D11Buffer* materialBuffer = nullptr;
-	ID3D11ShaderResourceView*** maps;
 
-	void createBuffers();
-	void freeBuffers();
+	Mesh* mesh = nullptr;
 
-	std::wstring s2ws(const std::string& s)
-	{
-		int len;
-		int slength = (int)s.length() + 1;
-		len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
-		wchar_t* buf = new wchar_t[len];
-		MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
-		std::wstring r(buf);
-		delete[] buf;
-		return r;
-	}
 public:
-	Array<Vertex>& getMesh();
+	void giveMesh(Mesh* _mesh);
 	float4x4 getWorldMatrix();
-	bool loadMesh(string OBJFile);
 	void setPosition(float3 pos);
+	void setRotation(float3 rot);
 	void rotateX(float x);
 	void rotateY(float y);
 	void rotateZ(float z);
 	void setScale(float3 _scale);
 	void move(float3 offset);
 	void draw();
-	Object(string OBJFile = "");
+	float3 getBoundingBoxPos() const;
+	float3 getBoundingBoxSize() const;
+	float3 getRotation() const;
+	float3 getPosition() const;
+	float3 getScale() const;
+	float castRayOnObject(float3 rayPos, float3 rayDir);
+	Object(float3 _position = float3(0,0,0), float3 _rotation = float3(0,0,0), float3 _scale = float3(1,1,1), Mesh* _mesh = nullptr);
 	~Object();
 };
-
-inline void Object::createBuffers()
+inline void Object::giveMesh(Mesh * _mesh)
 {
-	freeBuffers();
-	//vertex buffer
-	D3D11_BUFFER_DESC bufferDesc;
-	memset(&bufferDesc, 0, sizeof(bufferDesc));
-
-	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	bufferDesc.ByteWidth = mesh.byteSize();
-
-	D3D11_SUBRESOURCE_DATA data;
-	data.pSysMem = mesh.getArrayPointer();
-
-	gDevice->CreateBuffer(&bufferDesc, &data, &vertexBuffer);
-	//material buffer
-	D3D11_BUFFER_DESC desc;
-	memset(&desc, 0, sizeof(desc));
-	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.ByteWidth = sizeof(Material);
-
-	gDevice->CreateBuffer(&desc, nullptr, &materialBuffer);
-	//textureBuffer
-	maps = new ID3D11ShaderResourceView**[materials.length()];
-	for (size_t i = 0; i < materials.length(); i++)
-	{
-		maps[i] = new ID3D11ShaderResourceView*[3];
-		if (materials[i].ambientMap != "") {
-			string path = "Meshes/" + materials[i].ambientMap;
-			wstring wstr = s2ws(path);
-			LPCWCHAR str = wstr.c_str();
-			HRESULT hr_a = CreateWICTextureFromFile(gDevice, gDeviceContext, str, nullptr, &maps[i][0]);
-		} 
-		else maps[i][0] = nullptr;
-		if (materials[i].diffuseMap != "") {
-			string path = "Meshes/"+materials[i].diffuseMap;
-			wstring wstr = s2ws(path);
-			LPCWCHAR str = wstr.c_str();
-			HRESULT hr_d = CreateWICTextureFromFile(gDevice, gDeviceContext, str, nullptr, &maps[i][1]);
-		}
-		else maps[i][1] = nullptr;
-		if (materials[i].specularMap != "") {
-			string path = "Meshes/" + materials[i].specularMap;
-			wstring wstr = s2ws(path);
-			LPCWCHAR str = wstr.c_str();
-			HRESULT hr_s = CreateWICTextureFromFile(gDevice, gDeviceContext, str, nullptr, &maps[i][2]);
-		} 
-		else maps[i][2] = nullptr;
-	}
-}
-inline void Object::freeBuffers()
-{
-	if (vertexBuffer != nullptr)vertexBuffer->Release();
-	if (materialBuffer != nullptr)materialBuffer->Release();
-	if (maps != nullptr) {
-		for (int i = 0; i < materials.length(); i++)
-		{
-			if (maps[i] != nullptr) {
-				if (maps[i][0] != nullptr)maps[i][0]->Release();
-				if (maps[i][1] != nullptr)maps[i][1]->Release();
-				if (maps[i][2] != nullptr)maps[i][2]->Release();
-				delete[] maps[i];
-			}
-		}
-		delete[] maps;
-		maps = nullptr;
-	}
-}
-inline Array<Vertex>& Object::getMesh()
-{
-	return mesh;
+	mesh = _mesh;
 }
 inline float4x4 Object::getWorldMatrix()
 {
 	float4x4 mat = XMMatrixScaling(scale.x,scale.y,scale.z)*XMMatrixRotationZ(rotation.z)*XMMatrixRotationX(rotation.x)*XMMatrixRotationY(rotation.y)*XMMatrixTranslation(position.x, position.y, position.z);
 	return mat;
 }
-/*Returns true if failed*/
-inline bool Object::loadMesh(string OBJFile)
-{
-	if (!loadFromFile(OBJFile)) {
-		//averagePointNormals();
-		averagePointTriangleNormals();
-		createTriangularMesh(mesh, meshPartSize);
-		getMaterialParts(materials);
-		reset();
-		createBuffers();
-		return false;
-	}
-	else {
-		return true;
-		//Error loading file
-	}
-}
 inline void Object::setPosition(float3 pos)
 {
 	position = pos;
+}
+inline void Object::setRotation(float3 rot)
+{
+	rotation = rot;
 }
 inline void Object::rotateX(float x)
 {
@@ -168,34 +69,60 @@ inline void Object::move(float3 offset)
 }
 inline void Object::draw()
 {
-	UINT strides = sizeof(Vertex);
-	UINT offset = 0;
-	gDeviceContext->IASetVertexBuffers(0,1,&vertexBuffer,&strides,&offset);
-	gDeviceContext->PSSetConstantBuffers(2,1,&materialBuffer);
-
-	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	for (int i = 0; i < meshPartSize.length(); i++)
-	{
-		int startVert = 0;
-		for (int j = 0; j < i; j++)
-			startVert += meshPartSize[j];
-		gDeviceContext->UpdateSubresource(materialBuffer,0,0,&materials[i].material,0,0);
-
-		gDeviceContext->PSSetShaderResources(0,3,maps[i]);
-
-		gDeviceContext->Draw(meshPartSize[i],startVert);
-	}
-
+	if(mesh != nullptr)mesh->draw();
+}
+inline float3 Object::getRotation() const
+{
+	return rotation;
+}
+inline float3 Object::getPosition() const
+{
+	return position;
+}
+inline float3 Object::getScale() const
+{
+	return scale;
+}
+/*get bounding box position in world space*/
+inline float3 Object::getBoundingBoxPos() const
+{
+	return position +mesh->getBoundingBoxPos()*scale;
+}
+/*get bounding box scale/size in world space*/
+inline float3 Object::getBoundingBoxSize() const
+{
+	return mesh->getBoundingBoxSize()*scale;
 }
 
-inline Object::Object(string OBJFile)
+inline float Object::castRayOnObject(float3 rayPos, float3 rayDir)
 {
-	if(OBJFile != "")loadMesh(OBJFile);
+	if (mesh != nullptr) {
+		float4x4 mWorld = getWorldMatrix();
+		float4x4 mInvWorld = mWorld.Invert();
+		float3 lrayPos = XMVector4Transform(float4(rayPos.x, rayPos.y, rayPos.z, 1), mInvWorld);
+		float3 lrayDir = XMVector4Transform(float4(rayDir.x, rayDir.y, rayDir.z, 0), mInvWorld);
+		lrayDir.Normalize();
+
+		float t = mesh->castRayOnMesh(lrayPos, lrayDir);
+		if (t > 0) {
+			float3 target = XMVector3Transform(lrayPos + lrayDir * t, mWorld);
+			return (target.x - rayPos.x) / rayDir.x;
+		}
+		else return -1;
+	}
+	return -1;
+}
+
+inline Object::Object(float3 _position, float3 _rotation, float3 _scale, Mesh* _mesh)
+{
+	position = _position;
+	rotation = _rotation;
+	scale = _scale;
+	giveMesh(_mesh);
 }
 
 inline Object::~Object()
 {
-	freeBuffers();
+	
 }
 
