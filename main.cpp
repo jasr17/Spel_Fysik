@@ -29,7 +29,7 @@ std::unique_ptr<Mouse> mouse = std::make_unique<Mouse>();
 float2 mousePos;
 
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective;
+	XMMATRIX mWorld,mInvTraWorld,mView,mPerspective, mShadowMapProjection;
 };
 struct LightData {
 	const float4 lightCount = float4(10, 0, 0,0);
@@ -51,6 +51,7 @@ struct LightData {
 
 	}
 } lights;
+
 //player variables
 bool grounded = false;
 float gravityForce = 0.005;
@@ -88,6 +89,9 @@ ID3D11Buffer* gCameraBuffer = nullptr;
 // Things for shadow mapping
 ID3D11DepthStencilView* gShadowMap;
 ID3D11ShaderResourceView* gShaderResourceViewDepth;
+
+XMMATRIX gLightView;		// Temp light view, may add it in lightData when I get it working
+//ID3D11Buffer* gShadowMapProjectionMatrix = nullptr;
 
 struct ShaderSet {
 protected:
@@ -320,6 +324,7 @@ void CreateMatrixDataBuffer() {
 
 	gDevice->CreateBuffer(&desc,nullptr,&gMatrixBuffer);
 	gDeviceContext->GSSetConstantBuffers(0, 1, &gMatrixBuffer);
+	gDeviceContext->PSSetConstantBuffers(2, 1, &gMatrixBuffer);
 }
 
 void CreateCameraBuffer() {
@@ -340,18 +345,43 @@ void CreateCameraBuffer() {
 void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
 	XMFLOAT3 at = cameraPosition+cameraForward;
 	XMFLOAT3 up(0, 1, 0);
-	XMMATRIX mView = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
+	XMMATRIX view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
 
-	XMMATRIX mPerspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 200);
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 200);
 
 	WorldViewPerspectiveMatrix mat;
 	mat.mWorld = XMMatrixTranspose(worldMat);
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
-	mat.mView = XMMatrixTranspose(mView);
-	mat.mPerspective = XMMatrixTranspose(mPerspective);
+	mat.mView = XMMatrixTranspose(view);
+	mat.mPerspective = XMMatrixTranspose(perspective);
+
+	mat.mShadowMapProjection = XMMatrixMultiply(XMMatrixMultiply(XMMatrixMultiply(XMMatrixInverse(nullptr, perspective), XMMatrixInverse(nullptr, view)), gLightView), perspective); // Just nu annat format än andra(utan transponering) Ändrar sen för konsekvent
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
+
+void setLightView(){
+	XMVECTOR CamPos = lights.pos[0];
+	XMVECTOR LookAt = XMVectorSet(0.0, 0.0, 0.0, 0.0);
+	XMVECTOR Up = XMVectorSet(0.0, 1.0, 0.0, 0.0);
+	gLightView = XMMatrixLookAtLH(CamPos, LookAt, Up);
+}
+
+//void createShadowMapProjectionBuffer() { // Kanske tas bort
+//	D3D11_BUFFER_DESC desc;
+//	memset(&desc, 0, sizeof(desc));
+//	// what type of buffer will this be?
+//	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+//	// what type of usage (press F1, read the docs)
+//	desc.Usage = D3D11_USAGE_DEFAULT;
+//	// how big in bytes each element in the buffer is.
+//	desc.ByteWidth = sizeof(XMMATRIX);
+//
+//	gDevice->CreateBuffer(&desc, nullptr, &gShadowMapProjectionMatrix);
+//	gDeviceContext->PSSetConstantBuffers(2, 1, &gShadowMapProjectionMatrix);
+//}
+
+
 
 void CreateShadowMap() {
 	// Create texture space
@@ -391,8 +421,11 @@ void CreateShadowMap() {
 	pDepthBuffer->Release();
 }
 
-void Render_ShadowMap()
-{
+void Render_ShadowMap(){
+	// Deactivates shader resource so it can be used as a render target view
+	ID3D11ShaderResourceView* nullRTV = { NULL };
+	gDeviceContext->PSSetShaderResources(0, 1, &nullRTV);
+
 	// Clear shadow map
 	gDeviceContext->ClearDepthStencilView(gShadowMap, D3D11_CLEAR_DEPTH, 1, 0);
 	
@@ -481,6 +514,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		CreateMatrixDataBuffer();
 
 		//CreateShadowMap();
+		setLightView();
 
 		lights.randomize();
 
@@ -503,7 +537,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		shader_object.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment.hlsl");
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", L"Effects/Geometry.hlsl", L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex_Terrain.hlsl", L"Effects/Geometry_Terrain.hlsl", L"Effects/Fragment_Terrain.hlsl");
-		shader_shadowMap.createShaders(L"Effects/Light.hlsl", NULL, NULL);
+		shader_shadowMap.createShaders(L"Effects/Vertex_Light.hlsl", NULL, NULL);
 
 		ShowWindow(wndHandle, nCmdShow);
 

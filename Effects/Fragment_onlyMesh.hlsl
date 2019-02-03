@@ -16,6 +16,11 @@ cbuffer cameraBuffer : register(b1)
     float4 camPos;
 }
 
+cbuffer matrixBuffer : register(b2)
+{
+	matrix mWorld, mInvTraWorld, mView, mProj, mShadMapProj;
+}
+
 float4 PS_main(GeoOut input) : SV_Target
 {
     float3 normal = input.Normal;

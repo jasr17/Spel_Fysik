@@ -13,7 +13,7 @@ struct GeoOut
 };
 cbuffer cbuffs
 {
-    matrix mWorld, mInvTraWorld, mView, mProj;
+    matrix mWorld, mInvTraWorld, mView, mProj, mShadMapProj;
 };
 SamplerState samplerAni;
 Texture2D heightMap : register(t0);

@@ -20,6 +20,8 @@ cbuffer CB : register(b0)
 //-----------------------------------------------------------------------------------------
 VS_OUT VS_main(VS_IN input)
 {
+	VS_OUT output = (VS_OUT)0;
 	// Render from the light's view
-	return mul(worldMat, float4(input.Pos, 1));
+	output.Pos = mul(worldMat, float4(input.Pos, 1));
+	return output;
 }
