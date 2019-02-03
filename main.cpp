@@ -34,7 +34,7 @@ float2 mousePos;
 Mouse::ButtonStateTracker mouseTracker;
 //world data
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld,mInvTraWorld,mWorldViewPerspective;
+	XMMATRIX mWorld,mInvTraWorld,mWorldViewPerspective, mLightWVP;
 };
 struct LightData {
 	const float4 lightCount = float4(10, 0, 0,0);
@@ -342,9 +342,9 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	WorldViewPerspectiveMatrix mat;
 	mat.mWorld = XMMatrixTranspose(worldMat);
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
-	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat,mView),mPerspective));
+	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, view), perspective));
 
-	mat.mLightWVP = XMMatrixMultiply(XMMatrixMultiply(worldMat, gLightView),perspective); // Just nu annat format än andra(utan transponering) Ändrar sen för konsekvent
+	mat.mLightWVP = XMMatrixMultiply(XMMatrixMultiply(worldMat, gLightView), perspective); // Just nu annat format än andra(utan transponering) Ändrar sen för konsekvent
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
@@ -415,32 +415,32 @@ void Render_ShadowMap(){
 	ID3D11ShaderResourceView* nullRTV = { NULL };
 	gDeviceContext->PSSetShaderResources(0, 1, &nullRTV);
 
-	// Clear shadow map
-	gDeviceContext->ClearDepthStencilView(gShadowMap, D3D11_CLEAR_DEPTH, 1, 0);
-	
-	shader_shadowMap.bindShadersAndLayout();
+	//// Clear shadow map
+	//gDeviceContext->ClearDepthStencilView(gShadowMap, D3D11_CLEAR_DEPTH, 1, 0);
+	//
+	//shader_shadowMap.bindShadersAndLayout();
 
-	// Draw all objects
-	//Sword
-	for (int i = 0; i < swordPositions.length(); i++)
-	{
-		sword.setPosition(swordPositions[i]);
-		sword.rotateY(deltaTime*XM_2PI*0.25*(1.0f / 4));
-		updateMatrixBuffer(sword.getWorldMatrix());
-		sword.draw();
-	}
-	//lights
-	for (int i = 0; i < lights.lightCount.x; i++)
-	{
-		ball.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
-		ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.01);
-		updateMatrixBuffer(ball.getWorldMatrix());
-		ball.draw();
-	}
-	//terrain
-	shader_terrain.bindShadersAndLayout();
-	updateMatrixBuffer(terrain.getWorldMatrix());
-	terrain.draw();
+	//// Draw all objects
+	////Sword
+	//for (int i = 0; i < swordPositions.length(); i++)
+	//{
+	//	sword.setPosition(swordPositions[i]);
+	//	sword.rotateY(deltaTime*XM_2PI*0.25*(1.0f / 4));
+	//	updateMatrixBuffer(sword.getWorldMatrix());
+	//	sword.draw();
+	//}
+	////lights
+	//for (int i = 0; i < lights.lightCount.x; i++)
+	//{
+	//	ball.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
+	//	ball.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.01);
+	//	updateMatrixBuffer(ball.getWorldMatrix());
+	//	ball.draw();
+	//}
+	////terrain
+	//shader_terrain.bindShadersAndLayout();
+	//updateMatrixBuffer(terrain.getWorldMatrix());
+	//terrain.draw();
 }
 
 void mousePicking(float screenSpace_x, float screenSpace_y) {
