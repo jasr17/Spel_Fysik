@@ -343,14 +343,15 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
 	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, view), perspective));
 
-	mat.mLightWVP = XMMatrixMultiply(XMMatrixMultiply(worldMat, gLightView), perspective); // Just nu annat format än andra(utan transponering) Ändrar sen för konsekvent
+	mat.mLightWVP = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, gLightView), perspective));
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
 
 void setLightView(){
+	// Sets the view of the light
 	XMVECTOR CamPos = lights.pos[0];
-	XMVECTOR LookAt = XMVectorSet(0.0, 0.0, 0.0, 0.0);
+	XMVECTOR LookAt = XMVectorSet(2.0, 0.0, 2.0, 0.0);
 	XMVECTOR Up = XMVectorSet(0.0, 1.0, 0.0, 0.0);
 	gLightView = XMMatrixLookAtLH(CamPos, LookAt, Up);
 }
@@ -387,23 +388,21 @@ void CreateShadowMap() {
 	depthSRVDesc.Texture2D.MipLevels = 1;
 
 	gDevice->CreateShaderResourceView(pDepthBuffer, &depthSRVDesc, &gShaderResourceViewDepth);
-
-	
-
 	pDepthBuffer->Release();
 }
 
 void Render_ShadowMap(){
+	// Renders everything to the shadowmap depth buffer.
+
 	// Deactivates shader resource so it can be used as a render target view
 	ID3D11ShaderResourceView* nullRTV = { NULL };
 	gDeviceContext->PSSetShaderResources(0, 1, &nullRTV);
-	
+
 	gDeviceContext->OMSetRenderTargets(0, NULL, gShadowMap);
 
 	// use DeviceContext to talk to the API
 	gDeviceContext->ClearDepthStencilView(gShadowMap, D3D11_CLEAR_DEPTH, 1, 0);
-	//gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceViewDepth);
-
+	
 	shader_shadowMap.bindShadersAndLayout();
 
 	//objects
@@ -531,6 +530,9 @@ void Render()
 	//sphere.draw();
 	//terrain
 	shader_terrain.bindShadersAndLayout();
+
+	// Sets the shadowmap as resource. Just now on terrain but later on the last deferred pass.
+	gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceViewDepth);
 	updateMatrixBuffer(terrain.getWorldMatrix());
 	terrain.draw();
 }
@@ -569,7 +571,8 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 		for (int i = 0; i < lights.lightCount.x; i++)
 		{
 			float3 p = float3(0,2,0)+ terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().y / 2, terrain.getTerrainSize().y / 2));
-			lights.pos[i] = float4(p.x,p.y,p.z,1);
+			//lights.pos[i] = float4(p.x,p.y,p.z,1);
+			lights.pos[i] = float4(7, 7, 0, 1);
 			lights.color[i] = float4(random(0, 1), random(0, 1), random(0, 1), 0);
 			lights.color[i].Normalize();
 			lights.color[i].w = random(1, 2);

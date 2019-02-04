@@ -9,10 +9,10 @@ struct VS_OUT
 	float4 Pos : SV_POSITION;
 };
 
-cbuffer CB : register(b0)
+cbuffer cbuffs : register(b0)
 {
-	float4x4 worldMat;
-}
+	matrix mWorld, mInvTraWorld, mWorldViewPerspective, mLightWVP;
+};
 
 
 //-----------------------------------------------------------------------------------------
@@ -22,6 +22,6 @@ VS_OUT VS_main(VS_IN input)
 {
 	VS_OUT output = (VS_OUT)0;
 	// Render from the light's view
-	output.Pos = mul(worldMat, float4(input.Pos, 1));
+	output.Pos = mul(float4(input.Pos, 1), mLightWVP);
 	return output;
 }

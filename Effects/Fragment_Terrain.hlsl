@@ -22,11 +22,13 @@ cbuffer cameraBuffer : register(b1)
 
 bool checkShadowMap(float4 pos)
 {
-	pos.xy /= pos.w;
+	// Manually devides by w
+	pos.xyz /= pos.w;
+	// sets coordinates from a [-1, 1] range to [0, 1]. Flips y since directx 0 starts on top
 	float2 uvCoord = float2(0.5f*pos.x + 0.5f, -0.5f*pos.y + 0.5f);
-
-	float depth = pos.z / pos.w;
-	return depth - 0.05 < shadowMap.Sample(mySampler, pos.xy).r;
+	
+	// Compares (depth - bias) with the shadowmap
+	return pos.z - 0.00001 < shadowMap.Sample(mySampler, uvCoord).r;
 }
 
 float4 PS_main(GeoOut input) : SV_Target
@@ -44,26 +46,26 @@ float4 PS_main(GeoOut input) : SV_Target
     float3 terrainColor = lerp(lerp(brown, grey, heightDiffuse), heightDiffuse > 0.4 ? lerp(green, white, sqrt((heightDiffuse - 0.4) / 0.6)) : green, pow(slope, 20));
 
     float3 finalColor = terrainColor*ambient;
-    for (int i = 0; i < lightCount.x; i++)
-    {
-        float3 toLight = normalize(lightPos[i].xyz - input.PosW.xyz);
-        float dotNormaltoLight = dot(normal, toLight); //dot(normal, toLight) if less than one then the triangle is facing the other way, ignore
-        if (dotNormaltoLight > 0)
-        {
-            //diffuse
-            float distToLight = length(lightPos[i].xyz - input.PosW.xyz);
-			float diffuse = dotNormaltoLight;// *checkShadowMap(input.PosL);
-            //specular
-            float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
-            float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
-            float specular = pow(max(dot(reflekt, toCam), 0), 50);
-
-            finalColor += (terrainColor * lightColor[i].rgb * diffuse * lightColor[i].a + terrainColor * specular) / pow(distToLight, 1);
-        }
-    }
+	if (checkShadowMap(input.PosL))
+		for (int i = 0; i < lightCount.x; i++)
+		{
+		    float3 toLight = normalize(lightPos[i].xyz - input.PosW.xyz);
+		    float dotNormaltoLight = dot(normal, toLight); //dot(normal, toLight) if less than one then the triangle is facing the other way, ignore
+		    if (dotNormaltoLight > 0)
+		    {
+		        //diffuse
+		        float distToLight = length(lightPos[i].xyz - input.PosW.xyz);
+				float diffuse = dotNormaltoLight;// *checkShadowMap(input.PosL);
+		        //specular
+		        float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
+		        float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
+		        float specular = pow(max(dot(reflekt, toCam), 0), 50);
+				
+				finalColor += (terrainColor * lightColor[i].rgb * diffuse * lightColor[i].a + terrainColor * specular) / pow(distToLight, 1);
+		    }
+		}
 
     //return shadowedTextureColor
     finalColor = clamp(finalColor, float3(0, 0, 0), float3(1, 1, 1));
-    //return float4(finalColor, 1);
-	return float4(shadowMap.Sample(mySampler, input.PosL.xy).r, 0, 0, 0);
+    return float4(finalColor, 1);
 }
