@@ -8,8 +8,8 @@ struct GeoOut
 cbuffer lightBuffer : register(b0)
 {
     float4 lightCount;
-    float4 lightPos[10];
-    float4 lightColor[10];
+    float4 lightPos[25];
+    float4 lightColor[25];
 };
 cbuffer cameraBuffer : register(b1)
 {
@@ -45,7 +45,7 @@ float4 PS_main(GeoOut input) : SV_Target
             float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
             float specular = pow(max(dot(reflekt, toCam), 0), 50);
 
-            finalColor += (terrainColor * lightColor[i].rgb * diffuse * lightColor[i].a + terrainColor * specular) / pow(distToLight, 1);
+            finalColor += (terrainColor * lightColor[i].rgb * diffuse * lightColor[i].a + terrainColor * specular) / pow(distToLight, 1.5);
         }
     }
 

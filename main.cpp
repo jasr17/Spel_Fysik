@@ -37,9 +37,9 @@ struct WorldViewPerspectiveMatrix {
 	XMMATRIX mWorld,mInvTraWorld,mWorldViewPerspective;
 };
 struct LightData {
-	const float4 lightCount = float4(10, 0, 0,0);
-	float4 pos[10];
-	float4 color[10];//.a is intensity
+	const float4 lightCount = float4(25, 0, 0,0);
+	float4 pos[25];
+	float4 color[25];//.a is intensity
 } lights;
 //player variables
 bool grounded = false;
@@ -264,6 +264,7 @@ ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 
 void CreateLightBuffer() {
+	test;
 	D3D11_BUFFER_DESC desc;
 	memset(&desc, 0, sizeof(desc));
 	// what type of buffer will this be?
@@ -355,10 +356,10 @@ void mousePicking(float screenSpace_x, float screenSpace_y) {
 	for (int i = 0; i < objects.length(); i++)
 	{
 		float tt = objects[i].castRayOnObject(float3(wRayPos.x, wRayPos.y, wRayPos.z),float3(wRayDir.x, wRayDir.y, wRayDir.z));
-		if ((tt < t && tt >= 0) || t < 0)t = tt;
+		if ((tt < t && tt > 0) || t < 0)t = tt;
 	}
 	//apply position
-	if (t >= 0) {
+	if (t > 0) {
 		float4 target = (wRayPos + wRayDir * t);
 		lookPos = float3(target.x, target.y, target.z);
 	}
@@ -376,7 +377,8 @@ void drawBoundingBox(Object obj) {
 void Render()
 {
 	// clear the back buffer to a deep blue
-	float clearColor[] = { 0.1, 0.1, 0.1, 1 };
+	float3 darkBlue = float3(25.0f / 255, 25.0f / 255, 60.0f / 255)*0.5;
+	float clearColor[] = { darkBlue.x,darkBlue.y,darkBlue.z, 1 };
 
 	// use DeviceContext to talk to the API
 	gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
@@ -404,19 +406,6 @@ void Render()
 	sphere.setPosition(lookPos);
 	updateMatrixBuffer(sphere.getWorldMatrix());
 	sphere.draw();
-
-	sphere.setPosition(cameraPosition+float3(0,0,1));
-	//sphere.setScale(float3(0.1, 0.1, 1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	sphere.draw();
-	sphere.setPosition(cameraPosition + float3(0, -1, 0));
-	//sphere.setScale(float3(0.1, 1, 0.1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	sphere.draw();
-	sphere.setPosition(cameraPosition + float3(1, 0, 0));
-	//sphere.setScale(float3(1, 0.1, 0.1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	//sphere.draw();
 	//terrain
 	shader_terrain.bindShadersAndLayout();
 	updateMatrixBuffer(terrain.getWorldMatrix());
@@ -449,45 +438,80 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		CreateMatrixDataBuffer();
 
-		terrain.create(XMINT2(200, 200), 10, 5, L"Images/heightMap2.png", smoothShading);
+		terrain.create(XMINT2(500, 500), 50, 15, L"Images/hmheightMap.jpg", smoothShading);
 		float3 sc = terrain.getTerrainSize();
 		//lights
 		for (int i = 0; i < lights.lightCount.x; i++)
 		{
-			float3 p = float3(0,2,0)+ terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().y / 2, terrain.getTerrainSize().y / 2));
-			lights.pos[i] = float4(p.x,p.y,p.z,1);
+			float3 p = float3(0,2,0)+ terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2));
+			lights.pos[i] = float4(p.x,p.y+random(1,2),p.z,1);
 			lights.color[i] = float4(random(0, 1), random(0, 1), random(0, 1), 0);
 			lights.color[i].Normalize();
-			lights.color[i].w = random(1, 2);
+			lights.color[i].w = random(2, 5);
 		}
 
 		//meshes
 		meshes.appendCapacity(100);//CANNOT COPY MESH OBJECT
-		meshes.add(Mesh()); meshes[0].loadMesh("Meshes/Sword", flatShading);
+		meshes.add(Mesh()); meshes[0].loadMesh("Meshes/Sword", smoothShading);
 		meshes.add(Mesh()); meshes[1].loadMesh("Meshes/sphere", smoothShading);
 		meshes.add(Mesh()); meshes[2].loadMesh("Meshes/cube", flatShading);
 		meshes.add(Mesh()); meshes[3].loadMesh("Meshes/tree1", smoothShading);
+		meshes.add(Mesh()); meshes[4].loadMesh("Meshes/rock1", smoothShading);
+		meshes.add(Mesh()); meshes[5].loadMesh("Meshes/pineTree", smoothShading);
+		meshes.add(Mesh()); meshes[6].loadMesh("Meshes/cottage", flatShading);
+
+		float3 s = terrain.getTerrainSize();
 
 		objects.appendCapacity(1000);
 		for (int i = 0; i < 10; i++)
 		{
 			Object swd = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().y / 2, terrain.getTerrainSize().y / 2)) ,
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)) ,
 				float3(0,random(0,3.14*2),0), 
 				float3(0.1,0.1,0.1), 
 				&meshes[0]);
 			objects.add(swd);
 		}
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < 200; i++)
 		{
 			Object tree = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().y / 2, terrain.getTerrainSize().y / 2)), 
+				float3(0,0,0), 
 				float3(0, random(0, 3.14 * 2), 0), 
-				float3(1, 1, 1), 
+				float3(3, 1, 1), 
 				&meshes[3]
 			);
+			do {
+				tree.setPosition(terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)));
+			} while (tree.getPosition().y < 0.1);
 			objects.add(tree);
 		}
+		for (int i = 0; i < 100; i++)
+		{
+			Object rock = Object(
+				float3(0, 0, 0),
+				float3(0, random(0, 3.14 * 2), 0),
+				float3(1, 1, 1),
+				&meshes[4]
+			);
+			do {
+				rock.setPosition(terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)));
+			} while (rock.getPosition().y < 0.1);
+			objects.add(rock);
+		}
+		for (int i = 0; i < 70; i++)
+		{
+			Object pineTree = Object(
+				float3(0, 0, 0),
+				float3(0, random(0, 3.14 * 2), 0),
+				float3(1, 1, 1),
+				&meshes[5]
+			);
+			do {
+				pineTree.setPosition(terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)));
+			} while (pineTree.getPosition().y < 0.1);
+			objects.add(pineTree);
+		}
+		objects.add(Object(float3(3,0,3),float3(0,3.14,0),float3(2,2,2), &meshes[6]));
 
 		sphere.giveMesh(&meshes[1]);
 		cube.giveMesh(&meshes[2]);

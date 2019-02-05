@@ -8,8 +8,8 @@ struct GeoOut
 cbuffer lightBuffer : register(b0)
 {
     float4 lightCount;
-    float4 lightPos[10];
-    float4 lightColor[10];
+    float4 lightPos[25];
+    float4 lightColor[25];
 };
 cbuffer cameraBuffer : register(b1)
 {
@@ -22,7 +22,7 @@ float4 PS_main(GeoOut input) : SV_Target
     float2 uv = input.TexCoord;
     float3 posW = input.PosW.xyz;
     //ambient
-    float3 ambient = float3(0.2, 0.2, 0.2);
+    float3 ambient = float3(0.1, 0.1, 0.1);
     //resource color
     float3 textureColor = float3(1,1,1);
     float3 finalColor = textureColor * ambient;
@@ -40,7 +40,7 @@ float4 PS_main(GeoOut input) : SV_Target
             float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
             float specular = pow(max(dot(reflekt, toCam), 0), 50);
             
-            finalColor += (textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular) / pow(distToLight, 1);
+            finalColor += (textureColor * lightColor[i].rgb * diffuse * lightColor[i].a + textureColor * specular) / pow(distToLight, 1.5);
         }
     }
     //return shadowedTextureColor

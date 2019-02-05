@@ -15,6 +15,7 @@ struct Material {
 	float4 ambient3;
 	float4 diffuse3_strength;//xyz diffuse, w strength for some strange reason
 	float4 specular3_shininess;//xyz specular, w shininess
+	float4 mapUsages = float4(0,0,0,0);
 	void setAmbient(float3 a) {
 		ambient3 = float4(a.x,a.y,a.z, ambient3.w);
 	}
@@ -239,6 +240,7 @@ inline bool OBJLoader::loadMaterialFromFile(string filename)
 		while (mtlFile.peek() != EOF)
 		{
 			mtlFile >> startWord;
+			
 			if (startWord == "newmtl") {//create new material
 				string name;
 				mtlFile >> name;
@@ -273,16 +275,19 @@ inline bool OBJLoader::loadMaterialFromFile(string filename)
 				string name;
 				mtlFile >> name;
 				materials.getLast().ambientMap = name;
+				materials.getLast().material.mapUsages.x = 1;
 			}
 			else if (startWord == "map_Kd") {
 				string name;
 				mtlFile >> name;
 				materials.getLast().diffuseMap = name;
+				materials.getLast().material.mapUsages.y = 1;
 			}
 			else if (startWord == "map_Ks") {
 				string name;
 				mtlFile >> name;
 				materials.getLast().specularMap = name;
+				materials.getLast().material.mapUsages.z = 1;
 			}
 			else {//remove leftover from line
 				char c[100];
