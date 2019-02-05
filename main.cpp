@@ -264,7 +264,6 @@ ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 
 void CreateLightBuffer() {
-	test;
 	D3D11_BUFFER_DESC desc;
 	memset(&desc, 0, sizeof(desc));
 	// what type of buffer will this be?

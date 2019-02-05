@@ -18,8 +18,6 @@ using float3 = DirectX::SimpleMath::Vector3;
 using float4 = DirectX::SimpleMath::Vector4;
 using float4x4 = DirectX::SimpleMath::Matrix;
 
-int* test = nullptr;
-
 enum typeOfShading {
 	flatShading,
 	smoothShading
