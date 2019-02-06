@@ -13,9 +13,6 @@
 #include "Object.h"
 #include "Terrain.h"
 
-#define Win_WIDTH 1920*0.75//640
-#define Win_HEIGHT 1080*0.75//480
-
 float deltaTime = 0;
 
 Array<Mesh> meshes;
@@ -37,7 +34,7 @@ struct WorldViewPerspectiveMatrix {
 	XMMATRIX mWorld,mInvTraWorld,mWorldViewPerspective, mLightWVP;
 };
 struct LightData {
-	const float4 lightCount = float4(25, 0, 0,0);
+	const float4 lightCount = float4(1, 0, 0,0);
 	float4 pos[25];
 	float4 color[25];//.a is intensity
 } lights;
@@ -82,190 +79,6 @@ ID3D11ShaderResourceView* gShaderResourceViewDepth;
 XMMATRIX gLightView;		// Temp light view, may add it in lightData when I get it working
 //ID3D11Buffer* gShadowMapProjectionMatrix = nullptr;
 
-struct ShaderSet {
-protected:
-	ID3D11InputLayout* mVertexLayout = nullptr;
-
-	ID3D11VertexShader* mVertexShader = nullptr;
-	ID3D11GeometryShader* mGeometryShader = nullptr;
-	ID3D11PixelShader* mPixelShader = nullptr;
-	ID3DBlob* createVertexShader(LPCWSTR filename) {
-		ID3DBlob* pVS = nullptr;
-		ID3DBlob* errorBlob = nullptr;
-
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
-		HRESULT result = D3DCompileFromFile(
-			filename, // filename
-			nullptr,		// optional macros
-			nullptr,		// optional include files
-			"VS_main",		// entry point
-			"vs_5_0",		// shader model (target)
-			D3DCOMPILE_DEBUG,	// shader compile options (DEBUGGING)
-			0,				// IGNORE...DEPRECATED.
-			&pVS,			// double pointer to ID3DBlob		
-			&errorBlob		// pointer for Error Blob messages.
-		);
-
-		// compilation failed?
-		if (FAILED(result))
-		{
-			if (errorBlob)
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				// release "reference" to errorBlob interface object
-				errorBlob->Release();
-			}
-			if (pVS)
-				pVS->Release();
-			//return result;
-		}
-
-		gDevice->CreateVertexShader(
-			pVS->GetBufferPointer(),
-			pVS->GetBufferSize(),
-			nullptr,
-			&mVertexShader
-		);
-		return pVS;
-	}
-	HRESULT createGeometryShader(LPCWSTR filename) {
-		ID3DBlob* pGS = nullptr;
-		ID3DBlob* errorBlob = nullptr;
-
-		HRESULT result = D3DCompileFromFile(
-			filename,
-			nullptr,
-			nullptr,
-			"GS_main",
-			"gs_5_0",
-			D3DCOMPILE_DEBUG,
-			0,
-			&pGS,
-			&errorBlob
-		);
-
-		// compilation failed?
-		if (FAILED(result))
-		{
-			if (errorBlob)
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				// release "reference" to errorBlob interface object
-				errorBlob->Release();
-			}
-			if (pGS)
-				pGS->Release();
-			return result;
-		}
-
-		gDevice->CreateGeometryShader(pGS->GetBufferPointer(), pGS->GetBufferSize(), nullptr, &mGeometryShader);
-
-		pGS->Release();
-	}
-	HRESULT createFragmentShader(LPCWSTR filename) {
-		ID3DBlob* pPS = nullptr;
-		ID3DBlob* errorBlob = nullptr;
-
-		HRESULT result = D3DCompileFromFile(
-			filename, // filename
-			nullptr,		// optional macros
-			nullptr,		// optional include files
-			"PS_main",		// entry point
-			"ps_5_0",		// shader model (target)
-			D3DCOMPILE_DEBUG,	// shader compile options
-			0,				// effect compile options
-			&pPS,			// double pointer to ID3DBlob		
-			&errorBlob			// pointer for Error Blob messages.
-		);
-
-		// compilation failed?
-		if (FAILED(result))
-		{
-			if (errorBlob)
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				// release "reference" to errorBlob interface object
-				errorBlob->Release();
-			}
-			if (pPS)
-				pPS->Release();
-			return result;
-		}
-
-		gDevice->CreatePixelShader(pPS->GetBufferPointer(), pPS->GetBufferSize(), nullptr, &mPixelShader);
-		// we do not need anymore this COM object, so we release it.
-		pPS->Release();
-	}
-public:
-	bool createShaders(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0) {
-		ID3DBlob* pVS = createVertexShader(vertexName);
-		if (inputDesc == nullptr) {
-			D3D11_INPUT_ELEMENT_DESC standardInputDesc[] = {
-				{
-					"Position",		// "semantic" name in shader
-					0,				// "semantic" index (not used)
-					DXGI_FORMAT_R32G32B32_FLOAT, // size of ONE element (3 floats)
-					0,							 // input slot
-					0,							 // offset of first element
-					D3D11_INPUT_PER_VERTEX_DATA, // specify data PER vertex
-					0							 // used for INSTANCING (ignore)
-				},
-				{
-					"TexCoordinate",
-					0,
-					DXGI_FORMAT_R32G32_FLOAT,
-					0,
-					12,
-					D3D11_INPUT_PER_VERTEX_DATA,
-					0
-				},
-				{
-					"Normal",
-					0,
-					DXGI_FORMAT_R32G32B32_FLOAT,
-					0,
-					20,
-					D3D11_INPUT_PER_VERTEX_DATA,
-					0
-				}
-			};
-			gDevice->CreateInputLayout(standardInputDesc, ARRAYSIZE(standardInputDesc), pVS->GetBufferPointer(), pVS->GetBufferSize(), &mVertexLayout);
-		}
-		else {
-			gDevice->CreateInputLayout(inputDesc, inputDescCount, pVS->GetBufferPointer(), pVS->GetBufferSize(), &mVertexLayout);
-			delete[] inputDesc;
-		}
-		pVS->Release();
-
-		createGeometryShader(geometryName);
-		createFragmentShader(fragmentName);
-		return true;
-	}
-	void bindShadersAndLayout() {
-		gDeviceContext->VSSetShader(mVertexShader, nullptr, 0);
-		gDeviceContext->HSSetShader(nullptr, nullptr, 0);
-		gDeviceContext->DSSetShader(nullptr, nullptr, 0);
-		gDeviceContext->GSSetShader(mGeometryShader, nullptr, 0);
-		gDeviceContext->PSSetShader(mPixelShader, nullptr, 0);
-
-		gDeviceContext->IASetInputLayout(mVertexLayout);
-	}
-	void release() {
-		if (mVertexShader != nullptr)mVertexShader->Release();
-		if (mGeometryShader != nullptr)mGeometryShader->Release();
-		if (mPixelShader != nullptr)mPixelShader->Release();
-		if (mVertexLayout != nullptr)mVertexLayout->Release();
-	}
-	ShaderSet(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0){
-		createShaders(vertexName,geometryName,fragmentName,inputDesc,inputDescCount);
-	}
-	ShaderSet() {
-
-	}
-	~ShaderSet() {
-		release();
-	}
-};
 ShaderSet shader_object;
 ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
@@ -410,36 +223,7 @@ void Render_ShadowMap(){
 		updateMatrixBuffer(objects[i].getWorldMatrix());
 		objects[i].draw();
 	}
-	//lights
-	
-	for (int i = 0; i < lights.lightCount.x; i++)
-	{
-		sphere.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
-		sphere.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.03);
-		updateMatrixBuffer(sphere.getWorldMatrix());
-		sphere.draw();
-	}
-	//mousePicking sphere
-	
-	sphere.setScale(float3(1, 1, 1)*0.1);
-	sphere.setPosition(lookPos);
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	sphere.draw();
-
-	sphere.setPosition(cameraPosition + float3(0, 0, 1));
-	//sphere.setScale(float3(0.1, 0.1, 1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	sphere.draw();
-	sphere.setPosition(cameraPosition + float3(0, -1, 0));
-	//sphere.setScale(float3(0.1, 1, 0.1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	sphere.draw();
-	sphere.setPosition(cameraPosition + float3(1, 0, 0));
-	//sphere.setScale(float3(1, 0.1, 0.1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	//sphere.draw();
 	//terrain
-	
 	updateMatrixBuffer(terrain.getWorldMatrix());
 	terrain.draw();
 }
@@ -552,7 +336,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		CreateShadowMap();
 
-		terrain.create(XMINT2(200, 200), 10, 5, L"Images/heightMap2.png", smoothShading);
+		terrain.create(XMINT2(200, 200), 15, 5, L"Images/heightMap2.png", smoothShading);
 		float3 sc = terrain.getTerrainSize();
 		//lights
 		for (int i = 0; i < lights.lightCount.x; i++)
@@ -588,12 +372,12 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				&meshes[0]);
 			objects.add(swd);
 		}
-		for (int i = 0; i < 200; i++)
+		for (int i = 0; i < 1; i++)
 		{
 			Object tree = Object(
 				float3(0,0,0), 
 				float3(0, random(0, 3.14 * 2), 0), 
-				float3(3, 1, 1), 
+				float3(1, 1, 1), 
 				&meshes[3]
 			);
 			do {
@@ -601,7 +385,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 			} while (tree.getPosition().y < 0.1);
 			objects.add(tree);
 		}
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < 1; i++)
 		{
 			Object rock = Object(
 				float3(0, 0, 0),
@@ -614,7 +398,7 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 			} while (rock.getPosition().y < 0.1);
 			objects.add(rock);
 		}
-		for (int i = 0; i < 70; i++)
+		for (int i = 0; i < 1; i++)
 		{
 			Object pineTree = Object(
 				float3(0, 0, 0),
