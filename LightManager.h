@@ -4,12 +4,12 @@
 #define maxLightCount 10
 
 struct ShaderLight {
-	float4 position = float4(0,0,0,0);
-	float4 color = float4(0,0,0,0);//.a is intensity
+	float4 position = float4(0, 0, 0, 0);
+	float4 color = float4(0, 0, 0, 0);//.a is intensity
 	float4x4 viewPerspectiveMatrix;
 };
 struct ShaderLights {
-	float4 lightCount = float4(0,0,0,0);
+	float4 lightCount = float4(0, 0, 0, 0);
 	ShaderLight lights[maxLightCount];
 };
 
@@ -34,7 +34,7 @@ public:
 	void createShaderForShadowMap(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0);
 	void createBuffers();
 	int lightCount()const;
-	void addLight(float3 position, float3 color, float intensity, float3 lookAt = float3(0,0,0));
+	void addLight(float3 position, float3 color, float intensity, float3 lookAt = float3(0, 0, 0));
 	float3 getLightPosition(int index);
 	LightManager();
 	~LightManager();
@@ -53,7 +53,7 @@ inline void LightManager::releaseBuffers()
 inline void LightManager::updateLightBuffer()
 {
 
-	gDeviceContext->UpdateSubresource(lightBuffer,0,0,&shadowMapLights,0,0);
+	gDeviceContext->UpdateSubresource(lightBuffer, 0, 0, &shadowMapLights, 0, 0);
 }
 
 inline void LightManager::bindShaderResourceDepthViews()
@@ -99,7 +99,10 @@ inline void LightManager::createBuffers()
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.ByteWidth = sizeof(ShaderLights);
 
-	HRESULT hr = gDevice->CreateBuffer(&desc, nullptr, &lightBuffer);
+	D3D11_SUBRESOURCE_DATA data;
+	data.pSysMem = &shadowMapLights;
+
+	HRESULT hr = gDevice->CreateBuffer(&desc, &data, &lightBuffer);
 
 	// Create texture space
 	D3D11_TEXTURE2D_DESC texDesc;
@@ -147,10 +150,9 @@ inline void LightManager::addLight(float3 position, float3 color, float intensit
 	ShaderLight* l = &shadowMapLights.lights[lightCount()];
 	l->position = float4(position.x, position.y, position.z, 0);
 	l->color = float4(color.x, color.y, color.z, intensity);
-	float3 up(0, 1, 0);
-	float4x4 mv = XMMatrixLookAtLH(position, lookAt, up);
+	float4x4 mv = XMMatrixLookAtLH(position, lookAt, float3(0, 1, 0));
 	matrixViews[lightCount()] = mv;
-	XMMATRIX perspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 200);
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 50);
 	l->viewPerspectiveMatrix = XMMatrixTranspose(XMMatrixMultiply(mv, perspective));
 	shadowMapLights.lightCount.x++;
 }
