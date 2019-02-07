@@ -28,7 +28,7 @@ GeoOut VS_main(VS_IN input)
     output.PosH = mul(float4(input.Pos, 1), mWorldViewPerspective);
 	output.PosL = mul(float4(input.Pos, 1), mLightWVP);
     output.TexCoord = input.TexCoord;
-    output.Normal = normalize(mul(float4(input.Normal, 0), mInvTraWorld).xyz);
+    output.Normal = mul(float4(input.Normal, 0), mInvTraWorld).xyz;
 
     return output;
 }

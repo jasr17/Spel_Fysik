@@ -32,7 +32,7 @@ SamplerState samplerAni
 
 float4 PS_main(GeoOut input) : SV_Target
 {
-    float3 normal = input.Normal;
+    float3 normal = normalize(input.Normal);
     float2 uv = input.TexCoord;
     float3 posW = input.PosW.xyz;
     //ambient

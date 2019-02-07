@@ -33,7 +33,7 @@ bool checkShadowMap(float4 pos)
 
 float4 PS_main(GeoOut input) : SV_Target
 {
-    float3 normal = input.Normal;
+	float3 normal = normalize(input.Normal);
     //ambient
     float3 ambient = float3(0.1,0.1,0.1);
     //resource color
