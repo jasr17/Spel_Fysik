@@ -18,7 +18,9 @@ class LightManager
 private:
 	ShaderLights shadowMapLights;
 	Array<float4x4> matrixViews;
+	Array<float4x4> matrixPerspective;
 	ID3D11Buffer* lightBuffer = nullptr;
+	ID3D11Buffer* matrixBuffer = nullptr;
 	ID3D11DepthStencilView* shadowMaps[maxLightCount];
 	ID3D11ShaderResourceView* shaderResourceViewsDepth[maxLightCount];
 
@@ -27,14 +29,16 @@ private:
 	void releaseBuffers();
 public:
 	void updateLightBuffer();
+	void updateMatrixBuffer(float4x4 worldMatrix, int index);
 	void bindShaderResourceDepthViews();
 	void bindLightBuffer();
+	void bindMatrixBuffer();
 	float4x4 getLightViewMatrix(int index) const;
 	void setShadowMapForDrawing(int index);
 	void createShaderForShadowMap(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0);
 	void createBuffers();
 	int lightCount()const;
-	void addLight(float3 position, float3 color, float intensity, float3 lookAt = float3(0, 0, 0));
+	void addLight(float3 position, float3 color, float intensity, float3 lookAt = float3(0, 0, 0), float FOV = XM_PI*0.45, float nearPlane = 0.01, float farPlane = 50);
 	float3 getLightPosition(int index);
 	LightManager();
 	~LightManager();
@@ -43,6 +47,7 @@ public:
 inline void LightManager::releaseBuffers()
 {
 	if (lightBuffer != nullptr)lightBuffer->Release();
+	if (matrixBuffer != nullptr)matrixBuffer->Release();
 	for (int i = 0; i < maxLightCount; i++)
 	{
 		if (shadowMaps[i] != nullptr)shadowMaps[i]->Release();
@@ -52,8 +57,13 @@ inline void LightManager::releaseBuffers()
 
 inline void LightManager::updateLightBuffer()
 {
-
 	gDeviceContext->UpdateSubresource(lightBuffer, 0, 0, &shadowMapLights, 0, 0);
+}
+
+inline void LightManager::updateMatrixBuffer(float4x4 worldMatrix, int index)
+{
+	float4x4 m = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMatrix, matrixViews[index]),matrixPerspective[index]));
+	gDeviceContext->UpdateSubresource(matrixBuffer,0,0,&m,0,0);
 }
 
 inline void LightManager::bindShaderResourceDepthViews()
@@ -64,6 +74,11 @@ inline void LightManager::bindShaderResourceDepthViews()
 inline void LightManager::bindLightBuffer()
 {
 	gDeviceContext->PSSetConstantBuffers(0, 1, &lightBuffer);
+}
+
+inline void LightManager::bindMatrixBuffer()
+{
+	gDeviceContext->VSSetConstantBuffers(0,1,&matrixBuffer);
 }
 
 inline float4x4 LightManager::getLightViewMatrix(int index) const
@@ -82,6 +97,8 @@ inline void LightManager::setShadowMapForDrawing(int index)
 	gDeviceContext->ClearDepthStencilView(shadowMaps[index], D3D11_CLEAR_DEPTH, 1, 0);
 
 	shader_shadowMap.bindShadersAndLayout();
+
+	bindMatrixBuffer();
 }
 
 inline void LightManager::createShaderForShadowMap(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC * inputDesc, int inputDescCount)
@@ -103,6 +120,18 @@ inline void LightManager::createBuffers()
 	data.pSysMem = &shadowMapLights;
 
 	HRESULT hr = gDevice->CreateBuffer(&desc, &data, &lightBuffer);
+
+	//matrixbuffer
+	D3D11_BUFFER_DESC matdesc;
+	memset(&matdesc, 0, sizeof(matdesc));
+	// what type of buffer will this be?
+	matdesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	// what type of usage (press F1, read the docs)
+	matdesc.Usage = D3D11_USAGE_DEFAULT;
+	// how big in bytes each element in the buffer is.
+	matdesc.ByteWidth = sizeof(float4x4);
+
+	hr = gDevice->CreateBuffer(&matdesc, nullptr, &matrixBuffer);
 
 	// Create texture space
 	D3D11_TEXTURE2D_DESC texDesc;
@@ -145,14 +174,15 @@ inline int LightManager::lightCount() const
 	return (int)shadowMapLights.lightCount.x;
 }
 
-inline void LightManager::addLight(float3 position, float3 color, float intensity, float3 lookAt)
+inline void LightManager::addLight(float3 position, float3 color, float intensity, float3 lookAt, float FOV, float nearPlane, float farPlane)
 {
 	ShaderLight* l = &shadowMapLights.lights[lightCount()];
 	l->position = float4(position.x, position.y, position.z, 0);
 	l->color = float4(color.x, color.y, color.z, intensity);
 	float4x4 mv = XMMatrixLookAtLH(position, lookAt, float3(0, 1, 0));
 	matrixViews[lightCount()] = mv;
-	XMMATRIX perspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 50);
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(FOV, (float)(Win_WIDTH) / (Win_HEIGHT), nearPlane, farPlane);
+	matrixPerspective[lightCount()] = perspective;
 	l->viewPerspectiveMatrix = XMMatrixTranspose(XMMatrixMultiply(mv, perspective));
 	shadowMapLights.lightCount.x++;
 }
@@ -165,6 +195,7 @@ inline float3 LightManager::getLightPosition(int index)
 
 inline LightManager::LightManager() {
 	matrixViews.appendCapacity(maxLightCount);
+	matrixPerspective.appendCapacity(maxLightCount);
 	for (int i = 0; i < maxLightCount; i++)
 	{
 		shadowMaps[i] = nullptr;

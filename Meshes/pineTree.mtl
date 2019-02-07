@@ -11,4 +11,4 @@ Ni 1.000000
 d 1.000000
 illum 2
 map_Kd PineTreeTexture.png
-map_Ka pineTreeOcclusion.png
+# map_Ka pineTreeOcclusion.png

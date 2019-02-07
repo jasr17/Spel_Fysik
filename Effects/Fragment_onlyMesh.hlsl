@@ -2,7 +2,6 @@ struct GeoOut
 {
 	float4 PosW : POSITION;
 	float4 PosH : SV_POSITION;
-	float4 PosL : POSITION2;
 	float2 TexCoord : TEXCOORD;
 	float3 Normal : NORMAL;
 };
@@ -17,12 +16,6 @@ cbuffer lightBuffer : register(b0)
 	float4 lightCount;
 	ShaderLight lights[10];
 };
-//cbuffer lightBuffer : register(b0)
-//{
-//    float4 lightCount;
-//    float4 _lightPosition[10];
-//    float4 _lightColor[10];
-//};
 cbuffer cameraBuffer : register(b1)
 {
 	float4 camPos;
@@ -60,8 +53,8 @@ float4 PS_main(GeoOut input) : SV_Target
 		float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
 		float specular = pow(max(dot(reflekt, toCam), 0), 50);
 
-		finalColor += (textureColor * lightColor * diffuse * lightIntensity + textureColor * specular) / pow(distToLight, 1.5);
-	}
+            finalColor += lightIntensity * (textureColor * lightColor * diffuse + textureColor * specular) / pow(distToLight, 0);
+        }
 }
 	//return shadowedTextureColor
 	finalColor = clamp(finalColor, float3(0,0,0), float3(1, 1, 1));

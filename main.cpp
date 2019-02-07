@@ -34,7 +34,7 @@ float2 mousePos;
 Mouse::ButtonStateTracker mouseTracker;
 //world data
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective, mLightWVP;
+	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective;
 };
 //player variables
 bool grounded = false;
@@ -42,7 +42,7 @@ float gravityForce = 3;
 float3 gravityDirection = float3(0, -1, 0);
 float3 acceleration = float3(0, 0, 0);
 float3 velocity = float3(0, 0, 0);
-float3 cameraPosition = float3(0, 3, 0);
+float3 cameraPosition = float3(1, 5, 1);
 float3 cameraForward = float3(0, -1, 0);
 float2 cameraRotation = float2(0, 0);
 float rotation = 0;
@@ -97,7 +97,6 @@ void CreateMatrixDataBuffer() {
 	desc.ByteWidth = sizeof(WorldViewPerspectiveMatrix);
 
 	gDevice->CreateBuffer(&desc, nullptr, &gMatrixBuffer);
-	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
 }
 
 void CreateCameraBuffer() {
@@ -115,7 +114,7 @@ void CreateCameraBuffer() {
 	gDeviceContext->PSSetConstantBuffers(1, 1, &gCameraBuffer);
 }
 
-void updateMatrixBuffer(float4x4 worldMat, float4x4 viewMat = float4x4()) { // Lägg till så camPos o camForward är parametrar
+void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	XMFLOAT3 up(0, 1, 0);
 	XMMATRIX view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
@@ -126,8 +125,6 @@ void updateMatrixBuffer(float4x4 worldMat, float4x4 viewMat = float4x4()) { // L
 	mat.mWorld = XMMatrixTranspose(worldMat);
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
 	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, view), perspective));
-
-	mat.mLightWVP = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, viewMat), perspective));
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
@@ -174,15 +171,16 @@ void drawToShadowMap() {
 		//objects
 		for (int j = 0; j < objects.length(); j++)
 		{
-			updateMatrixBuffer(objects[j].getWorldMatrix(), lightManager.getLightViewMatrix(i));
+			lightManager.updateMatrixBuffer(objects[j].getWorldMatrix(),i);
 			objects[j].draw();
 		}
 		//terrain
-		updateMatrixBuffer(terrain.getWorldMatrix(), lightManager.getLightViewMatrix(i));
+		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(),i);
 		terrain.draw();
 	}
 }
-void Render_2() {
+void Render() {
+	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
 	lightManager.updateLightBuffer();
 	lightManager.bindLightBuffer();
 	// set the render target as the back buffer
@@ -249,11 +247,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		CreateMatrixDataBuffer();
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
-		lightManager.addLight(float3(3, 10, 3), float3(1, 1, 1), 1, float3(0, 0, 0));
-		lightManager.addLight(float3(5, 10, 3), float3(1, 1, 1), 1, float3(0, 0, 0));
+		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
 		lightManager.createBuffers();
 
-		terrain.create(XMINT2(200, 200), 15, 5, L"Images/heightMap2.png", smoothShading);
+		terrain.create(XMINT2(500, 500), 15, 5, L"Images/heightMap2.png", smoothShading);
 
 		//meshes
 		meshes.appendCapacity(100);//CANNOT COPY MESH OBJECT
@@ -266,9 +263,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		meshes.add(Mesh()); meshes[6].loadMesh("Meshes/cottage", flatShading);
 
 		float3 s = terrain.getTerrainSize();
-
+		float3 scale(0.05,0.05,0.05);
 		objects.appendCapacity(1000);
-		for (int i = 0; i < 10; i++)
+		for (int i = 0; i < 0; i++)
 		{
 			Object swd = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
@@ -277,46 +274,37 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				&meshes[0]);
 			objects.add(swd);
 		}
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < 100; i++)
 		{
 			Object tree = Object(
-				float3(0, 0, 0),
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
-				float3(1, 1, 1),
+				scale,
 				&meshes[3]
 			);
-			do {
-				tree.setPosition(terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)));
-			} while (tree.getPosition().y < 0.1);
 			objects.add(tree);
 		}
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < 100; i++)
 		{
 			Object rock = Object(
-				float3(0, 0, 0),
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
-				float3(1, 1, 1),
+				scale,
 				&meshes[4]
 			);
-			do {
-				rock.setPosition(terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)));
-			} while (rock.getPosition().y < 0.1);
 			objects.add(rock);
 		}
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < 100; i++)
 		{
 			Object pineTree = Object(
-				float3(0, 0, 0),
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
-				float3(1, 1, 1),
+				scale,
 				&meshes[5]
 			);
-			do {
-				pineTree.setPosition(terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)));
-			} while (pineTree.getPosition().y < 0.1);
 			objects.add(pineTree);
 		}
-		objects.add(Object(float3(3, 0, 3), float3(0, 3.14, 0), float3(2, 2, 2), &meshes[6]));
+		objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
 
 		sphere.giveMesh(&meshes[1]);
 		cube.giveMesh(&meshes[2]);
@@ -433,7 +421,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				//Render_ShadowMap();
 				//Render(); //8. Rendera
 				drawToShadowMap();
-				Render_2();
+				Render();
 
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
 			}
