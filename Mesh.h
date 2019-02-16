@@ -239,7 +239,7 @@ inline float Mesh::castRayOnMesh(float3 rayPos, float3 rayDir)
 	float3 bPos = getBoundingBoxPos();
 	float3 bScale = getBoundingBoxSize();
 	//check if close
-	if (obbTest(rayDir, rayPos, bPos, bScale) > 0) {
+	if (obbTest(rayDir, rayPos, bPos, bScale) != -1) {
 		//find the exact point
 		float closest = -1;
 		int length = mesh.length() / 3;

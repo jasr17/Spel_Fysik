@@ -1,9 +1,9 @@
 struct PixelInput
 {
-    float4 PosW : POSITION;
-    float4 PosH : SV_POSITION;
-    float2 TexCoord : TEXCOORD;
-    float3 Normal : NORMAL;
+	float4 PosW : POSITION;
+	float4 PosH : SV_POSITION;
+	float2 TexCoord : TEXCOORD;
+	float3 Normal : NORMAL;
 };
 struct PixelShaderOutput
 {
@@ -13,13 +13,12 @@ struct PixelShaderOutput
 };
 cbuffer lightBuffer : register(b0)
 {
-    float4 lightCount;
-    float4 lightPos[10];
-    float4 lightColor[10];
+	float4 lightCount;
+	ShaderLight lights[10];
 };
 cbuffer cameraBuffer : register(b1)
 {
-    float4 camPos;
+	float4 camPos;
 }
 
 PixelShaderOutput PS_main(PixelInput input) : SV_Target

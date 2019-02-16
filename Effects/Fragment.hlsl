@@ -5,28 +5,28 @@ struct PixelIn
     float2 TexCoord : TEXCOORD;
     float3 Normal	: NORMAL;
 };
-
-struct PixelOutput
+struct ShaderLight
+{
+	float4 position;
+	float4 color; //.a is intensity
+	float4x4 viewPerspectiveMatrix;
+};
+cbuffer lightBuffer : register(b0)
 {
 	float4 diffuse	: SV_Target0; //dbuffer
 	float4 normal	: SV_Target1; //nbuffer
 	float4 position	: SV_Target2; //pbuffer
 };
-//cbuffer lightBuffer : register(b0)
-//{
-//    float4 lightCount;
-//    float4 lightPos[10];
-//    float4 lightColor[10];
-//};
-//cbuffer cameraBuffer : register(b1)
-//{
-//    float4 camPos;
-//}
+cbuffer cameraBuffer : register(b1)
+{
+	float4 camPos;
+}
 cbuffer materialBuffer : register(b2)
 {
-    float4 ambientReflectivity;
-    float4 diffuseReflectivity;
-    float4 specularReflectivity;
+	float4 ambientReflectivity;
+	float4 diffuseReflectivity;
+	float4 specularReflectivity;
+	float4 mapUsages;
 };
 Texture2D maps[3] : register(t0);
 SamplerState samplerAni;

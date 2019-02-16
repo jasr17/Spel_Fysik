@@ -12,11 +12,7 @@
 
 #include "Object.h"
 #include "Terrain.h"
-
-#define Win_WIDTH 1920*0.75//640
-#define Win_HEIGHT 1080*0.75//480
-
-#define DEF_BUFFERCOUNT 3
+#include "LightManager.h"
 
 float deltaTime = 0;
 
@@ -27,7 +23,7 @@ Object cube;
 
 Terrain terrain;
 
-
+LightManager lightManager;
 
 //mouse Picking location
 float3 lookPos(0, 0, 0);
@@ -38,25 +34,17 @@ float2 mousePos;
 Mouse::ButtonStateTracker mouseTracker;
 //world data
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld,mInvTraWorld,mWorldViewPerspective;
+	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective;
 };
-struct LightData {
-	const float4 lightCount = float4(10, 0, 0,0);
-	float4 pos[10];
-	float4 color[10];//.a is intensity
-} lights;
-
-
-
 //player variables
 bool grounded = false;
 float gravityForce = 3;
-float3 gravityDirection = float3(0,-1,0);
-float3 acceleration = float3(0,0,0);
-float3 velocity = float3(0,0,0);
-float3 cameraPosition = float3(0,3,0);
-float3 cameraForward = float3(0,-1,0);
-float2 cameraRotation = float2(0,0);
+float3 gravityDirection = float3(0, -1, 0);
+float3 acceleration = float3(0, 0, 0);
+float3 velocity = float3(0, 0, 0);
+float3 cameraPosition = float3(1, 5, 1);
+float3 cameraForward = float3(0, -1, 0);
+float2 cameraRotation = float2(0, 0);
 float rotation = 0;
 
 HWND InitWindow(HINSTANCE hInstance);
@@ -79,194 +67,8 @@ ID3D11RenderTargetView* gBackbufferRTV = nullptr;
 ID3D11DepthStencilView* gDepthStencilView = nullptr;
 // a resource to store the matrix in the GPU
 ID3D11Buffer* gMatrixBuffer = nullptr;
-ID3D11Buffer* gLightBuffer = nullptr;
 ID3D11Buffer* gCameraBuffer = nullptr;
 
-struct ShaderSet {
-protected:
-	ID3D11InputLayout* gVertexLayout = nullptr;
-
-	ID3D11VertexShader* gVertexShader = nullptr;
-	ID3D11GeometryShader* gGeometryShader = nullptr;
-	ID3D11PixelShader* gPixelShader = nullptr;
-	ID3DBlob* createVertexShader(LPCWSTR filename) {
-		ID3DBlob* pVS = nullptr;
-		ID3DBlob* errorBlob = nullptr;
-
-		// https://msdn.microsoft.com/en-us/library/windows/desktop/hh968107(v=vs.85).aspx
-		HRESULT result = D3DCompileFromFile(
-			filename, // filename
-			nullptr,		// optional macros
-			nullptr,		// optional include files
-			"VS_main",		// entry point
-			"vs_5_0",		// shader model (target)
-			D3DCOMPILE_DEBUG,	// shader compile options (DEBUGGING)
-			0,				// IGNORE...DEPRECATED.
-			&pVS,			// double pointer to ID3DBlob		
-			&errorBlob		// pointer for Error Blob messages.
-		);
-
-		// compilation failed?
-		if (FAILED(result))
-		{
-			if (errorBlob)
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				// release "reference" to errorBlob interface object
-				errorBlob->Release();
-			}
-			if (pVS)
-				pVS->Release();
-			//return result;
-		}
-
-		gDevice->CreateVertexShader(
-			pVS->GetBufferPointer(),
-			pVS->GetBufferSize(),
-			nullptr,
-			&gVertexShader
-		);
-		return pVS;
-	}
-	HRESULT createGeometryShader(LPCWSTR filename) {
-		ID3DBlob* pGS = nullptr;
-		ID3DBlob* errorBlob = nullptr;
-
-		HRESULT result = D3DCompileFromFile(
-			filename,
-			nullptr,
-			nullptr,
-			"GS_main",
-			"gs_5_0",
-			D3DCOMPILE_DEBUG,
-			0,
-			&pGS,
-			&errorBlob
-		);
-
-		// compilation failed?
-		if (FAILED(result))
-		{
-			if (errorBlob)
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				// release "reference" to errorBlob interface object
-				errorBlob->Release();
-			}
-			if (pGS)
-				pGS->Release();
-			return result;
-		}
-
-		gDevice->CreateGeometryShader(pGS->GetBufferPointer(), pGS->GetBufferSize(), nullptr, &gGeometryShader);
-
-		pGS->Release();
-	}
-	HRESULT createFragmentShader(LPCWSTR filename) {
-		ID3DBlob* pPS = nullptr;
-		ID3DBlob* errorBlob = nullptr;
-
-		HRESULT result = D3DCompileFromFile(
-			filename, // filename
-			nullptr,		// optional macros
-			nullptr,		// optional include files
-			"PS_main",		// entry point
-			"ps_5_0",		// shader model (target)
-			D3DCOMPILE_DEBUG,	// shader compile options
-			0,				// effect compile options
-			&pPS,			// double pointer to ID3DBlob		
-			&errorBlob			// pointer for Error Blob messages.
-		);
-
-		// compilation failed?
-		if (FAILED(result))
-		{
-			if (errorBlob)
-			{
-				OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-				// release "reference" to errorBlob interface object
-				errorBlob->Release();
-			}
-			if (pPS)
-				pPS->Release();
-			return result;
-		}
-
-		gDevice->CreatePixelShader(pPS->GetBufferPointer(), pPS->GetBufferSize(), nullptr, &gPixelShader);
-		// we do not need anymore this COM object, so we release it.
-		pPS->Release();
-	}
-public:
-	bool createShaders(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0) {
-		ID3DBlob* pVS = createVertexShader(vertexName);
-		if (inputDesc == nullptr) {
-			D3D11_INPUT_ELEMENT_DESC standardInputDesc[] = {
-				{
-					"Position",		// "semantic" name in shader
-					0,				// "semantic" index (not used)
-					DXGI_FORMAT_R32G32B32_FLOAT, // size of ONE element (3 floats)
-					0,							 // input slot
-					0,							 // offset of first element
-					D3D11_INPUT_PER_VERTEX_DATA, // specify data PER vertex
-					0							 // used for INSTANCING (ignore)
-				},
-				{
-					"TexCoordinate",
-					0,
-					DXGI_FORMAT_R32G32_FLOAT,
-					0,
-					12,
-					D3D11_INPUT_PER_VERTEX_DATA,
-					0
-				},
-				{
-					"Normal",
-					0,
-					DXGI_FORMAT_R32G32B32_FLOAT,
-					0,
-					20,
-					D3D11_INPUT_PER_VERTEX_DATA,
-					0
-				}
-			};
-			gDevice->CreateInputLayout(standardInputDesc, ARRAYSIZE(standardInputDesc), pVS->GetBufferPointer(), pVS->GetBufferSize(), &gVertexLayout);
-		}
-		else {
-			gDevice->CreateInputLayout(inputDesc, inputDescCount, pVS->GetBufferPointer(), pVS->GetBufferSize(), &gVertexLayout);
-			delete[] inputDesc;
-		}
-		pVS->Release();
-
-		createGeometryShader(geometryName);
-		createFragmentShader(fragmentName);
-		return true;
-	}
-	void bindShadersAndLayout() {
-		gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
-		gDeviceContext->HSSetShader(nullptr, nullptr, 0);
-		gDeviceContext->DSSetShader(nullptr, nullptr, 0);
-		gDeviceContext->GSSetShader(gGeometryShader, nullptr, 0);
-		gDeviceContext->PSSetShader(gPixelShader, nullptr, 0);
-
-		gDeviceContext->IASetInputLayout(gVertexLayout);
-	}
-	void release() {
-		if (gVertexShader != nullptr)gVertexShader->Release();
-		if (gGeometryShader != nullptr)gGeometryShader->Release();
-		if (gPixelShader != nullptr)gPixelShader->Release();
-		if (gVertexLayout != nullptr)gVertexLayout->Release();
-	}
-	ShaderSet(LPCWSTR vertexName, LPCWSTR geometryName, LPCWSTR fragmentName, D3D11_INPUT_ELEMENT_DESC* inputDesc = nullptr, int inputDescCount = 0){
-		createShaders(vertexName,geometryName,fragmentName,inputDesc,inputDescCount);
-	}
-	ShaderSet() {
-
-	}
-	~ShaderSet() {
-		release();
-	}
-	
-};
 ShaderSet shader_object;
 ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
@@ -473,8 +275,7 @@ void CreateMatrixDataBuffer() {
 	// how big in bytes each element in the buffer is.
 	desc.ByteWidth = sizeof(WorldViewPerspectiveMatrix);
 
-	gDevice->CreateBuffer(&desc,nullptr,&gMatrixBuffer);
-	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
+	gDevice->CreateBuffer(&desc, nullptr, &gMatrixBuffer);
 }
 
 void CreateCameraBuffer() {
@@ -492,17 +293,17 @@ void CreateCameraBuffer() {
 	gDeviceContext->PSSetConstantBuffers(1, 1, &gCameraBuffer);
 }
 
-void updateMatrixBuffer(float4x4 worldMat) {
-	XMFLOAT3 at = cameraPosition+cameraForward;
+void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
+	XMFLOAT3 at = cameraPosition + cameraForward;
 	XMFLOAT3 up(0, 1, 0);
-	XMMATRIX mView = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
+	XMMATRIX view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
 
-	XMMATRIX mPerspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 200);
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 50);
 
 	WorldViewPerspectiveMatrix mat;
 	mat.mWorld = XMMatrixTranspose(worldMat);
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
-	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat,mView),mPerspective));
+	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, view), perspective));
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
@@ -511,8 +312,8 @@ void mousePicking(float screenSpace_x, float screenSpace_y) {
 	//pos between -1 and 1
 	float SSxN = 2 * (screenSpace_x / (Win_WIDTH)) - 1;
 	float SSyN = -(2 * (screenSpace_y / (Win_HEIGHT)) - 1);
-	float4 vRayPos(0,0,0,1);
-	float4 vRayDir(SSxN,SSyN,1,0);
+	float4 vRayPos(0, 0, 0, 1);
+	float4 vRayDir(SSxN, SSyN, 1, 0);
 	vRayDir.Normalize();
 	//convert to world space
 	XMFLOAT3 at = cameraPosition + cameraForward;
@@ -524,11 +325,11 @@ void mousePicking(float screenSpace_x, float screenSpace_y) {
 	float t = -1;
 	for (int i = 0; i < objects.length(); i++)
 	{
-		float tt = objects[i].castRayOnObject(float3(wRayPos.x, wRayPos.y, wRayPos.z),float3(wRayDir.x, wRayDir.y, wRayDir.z));
-		if ((tt < t && tt >= 0) || t < 0)t = tt;
+		float tt = objects[i].castRayOnObject(float3(wRayPos.x, wRayPos.y, wRayPos.z), float3(wRayDir.x, wRayDir.y, wRayDir.z));
+		if ((tt < t && tt > 0) || t < 0)t = tt;
 	}
 	//apply position
-	if (t >= 0) {
+	if (t > 0) {
 		float4 target = (wRayPos + wRayDir * t);
 		lookPos = float3(target.x, target.y, target.z);
 	}
@@ -571,10 +372,31 @@ void RenderFSQ() {
 
 }
 
-void Render()
-{
+
+void drawToShadowMap() {
+	for (int i = 0; i < lightManager.lightCount(); i++)
+	{
+		lightManager.setShadowMapForDrawing(i);
+		//objects
+		for (int j = 0; j < objects.length(); j++)
+		{
+			lightManager.updateMatrixBuffer(objects[j].getWorldMatrix(),i);
+			objects[j].draw();
+		}
+		//terrain
+		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(),i);
+		terrain.draw();
+	}
+}
+void Render() {
+	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
+	lightManager.updateLightBuffer();
+	lightManager.bindLightBuffer();
+	// set the render target as the back buffer
+	gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, gDepthStencilView);
 	// clear the back buffer to a deep blue
-	float clearColor[] = { 0.1, 0.1, 0.1, 1 };
+	float3 darkBlue = float3(25.0f / 255, 25.0f / 255, 60.0f / 255)*0.5;
+	float clearColor[] = { darkBlue.x,darkBlue.y,darkBlue.z, 1 };
 
 	// use DeviceContext to talk to the API
 	/*gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
@@ -590,10 +412,10 @@ void Render()
 	}
 	//lights
 	shader_object_onlyMesh.bindShadersAndLayout();
-	for (int i = 0; i < lights.lightCount.x; i++)
+	for (int i = 0; i < lightManager.lightCount(); i++)
 	{
-		sphere.setPosition(float3(lights.pos[i].x, lights.pos[i].y, lights.pos[i].z));
-		sphere.setScale(float3(lights.color[i].w, lights.color[i].w, lights.color[i].w)*0.03);
+		sphere.setPosition(lightManager.getLightPosition(i));
+		sphere.setScale(float3(1, 1, 1));
 		updateMatrixBuffer(sphere.getWorldMatrix());
 		sphere.draw();
 	}
@@ -603,31 +425,17 @@ void Render()
 	sphere.setPosition(lookPos);
 	updateMatrixBuffer(sphere.getWorldMatrix());
 	sphere.draw();
-
-	sphere.setPosition(cameraPosition+float3(0,0,1));
-	//sphere.setScale(float3(0.1, 0.1, 1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	sphere.draw();
-	sphere.setPosition(cameraPosition + float3(0, -1, 0));
-	//sphere.setScale(float3(0.1, 1, 0.1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	sphere.draw();
-	sphere.setPosition(cameraPosition + float3(1, 0, 0));
-	//sphere.setScale(float3(1, 0.1, 0.1));
-	updateMatrixBuffer(sphere.getWorldMatrix());
-	//sphere.draw();
 	//terrain
+	lightManager.bindShaderResourceDepthViews();
 	shader_terrain.bindShadersAndLayout();
 	updateMatrixBuffer(terrain.getWorldMatrix());
 	terrain.draw();
 }
-
-
-int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow )
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
 	MSG msg = { 0 };
 	HWND wndHandle = InitWindow(hInstance); //1. Skapa fönster
-	
+
 	mouse->SetWindow(wndHandle);
 	mouse->SetVisible(false);
 
@@ -644,51 +452,70 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 		CreateCameraBuffer();
 
-		CreateLightBuffer();
 
 		CreateMatrixDataBuffer();
-		
+
 		gFSQ.createFSQ();
 
-		terrain.create(XMINT2(200, 200), 10, 5, L"Images/heightMap2.png", smoothShading);
-		float3 sc = terrain.getTerrainSize();
-		//lights
-		for (int i = 0; i < lights.lightCount.x; i++)
-		{
-			float3 p = float3(0,2,0)+ terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().y / 2, terrain.getTerrainSize().y / 2));
-			lights.pos[i] = float4(p.x,p.y,p.z,1);
-			lights.color[i] = float4(random(0, 1), random(0, 1), random(0, 1), 0);
-			lights.color[i].Normalize();
-			lights.color[i].w = random(1, 2);
-		}
+		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
+		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
+		lightManager.createBuffers();
+
+		terrain.create(XMINT2(500, 500), 15, 5, L"Images/heightMap2.png", smoothShading);
 
 		//meshes
 		meshes.appendCapacity(100);//CANNOT COPY MESH OBJECT
-		meshes.add(Mesh()); meshes[0].loadMesh("Meshes/Sword", flatShading);
+		meshes.add(Mesh()); meshes[0].loadMesh("Meshes/Sword", smoothShading);
 		meshes.add(Mesh()); meshes[1].loadMesh("Meshes/sphere", smoothShading);
 		meshes.add(Mesh()); meshes[2].loadMesh("Meshes/cube", flatShading);
 		meshes.add(Mesh()); meshes[3].loadMesh("Meshes/tree1", smoothShading);
+		meshes.add(Mesh()); meshes[4].loadMesh("Meshes/rock1", smoothShading);
+		meshes.add(Mesh()); meshes[5].loadMesh("Meshes/pineTree", smoothShading);
+		meshes.add(Mesh()); meshes[6].loadMesh("Meshes/cottage", flatShading);
 
+		float3 s = terrain.getTerrainSize();
+		float3 scale(0.05,0.05,0.05);
 		objects.appendCapacity(1000);
-		for (int i = 0; i < 10; i++)
+		for (int i = 0; i < 0; i++)
 		{
 			Object swd = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().y / 2, terrain.getTerrainSize().y / 2)) ,
-				float3(0,random(0,3.14*2),0), 
-				float3(0.1,0.1,0.1), 
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(0, random(0, 3.14 * 2), 0),
+				float3(0.1, 0.1, 0.1),
 				&meshes[0]);
 			objects.add(swd);
 		}
-		for (int i = 0; i < 1; i++)
+		for (int i = 0; i < 100; i++)
 		{
 			Object tree = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().y / 2, terrain.getTerrainSize().y / 2)), 
-				float3(0, random(0, 3.14 * 2), 0), 
-				float3(1, 1, 1), 
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(0, random(0, 3.14 * 2), 0),
+				scale,
 				&meshes[3]
 			);
 			objects.add(tree);
 		}
+		for (int i = 0; i < 100; i++)
+		{
+			Object rock = Object(
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(0, random(0, 3.14 * 2), 0),
+				scale,
+				&meshes[4]
+			);
+			objects.add(rock);
+		}
+		for (int i = 0; i < 100; i++)
+		{
+			Object pineTree = Object(
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(0, random(0, 3.14 * 2), 0),
+				scale,
+				&meshes[5]
+			);
+			objects.add(pineTree);
+		}
+		objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
 
 		sphere.giveMesh(&meshes[1]);
 		cube.giveMesh(&meshes[2]);
@@ -730,11 +557,11 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 
 				SetCursorPos((r.right + r.left) / 2, (r.bottom + r.top) / 2);//set cursor to middle of window
 				GetCursorPos(&newPos);
-				mousePos = float2(newPos.x,newPos.y);//save cursor position
+				mousePos = float2(newPos.x, newPos.y);//save cursor position
 
-				cameraRotation += float2(diff.y,diff.x)*0.002;//add mouse rotation
+				cameraRotation += float2(diff.y, diff.x)*0.002;//add mouse rotation
 
-				if(mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED)mousePicking((float)Win_WIDTH/2,(float)Win_HEIGHT/2);
+				if (mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED)mousePicking((float)Win_WIDTH / 2, (float)Win_HEIGHT / 2);
 				//keyboard
 				Keyboard::State kb = m_keyboard->GetState();
 				//close window
@@ -760,12 +587,12 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 				if (cameraRotation.x < (-3.14 / 2)*0.9) cameraRotation.x = (-3.14 / 2)*0.9;
 				//calc rotation matrix to use later
 				float4x4 rotMat = float4x4::CreateRotationX(cameraRotation.x)*float4x4::CreateRotationY(cameraRotation.y);
-				cameraForward = XMVector3Transform(float4(0,0,1,1),rotMat);
+				cameraForward = XMVector3Transform(float4(0, 0, 1, 1), rotMat);
 				//camera movement
 				float speed = 1;
 				float jumpForce = 2;
-				float3 left = cameraForward.Cross(float3(0,1,0));
-				float3 forward = XMVector3Transform(float4(0,0,1,1),float4x4::CreateRotationY(cameraRotation.y));
+				float3 left = cameraForward.Cross(float3(0, 1, 0));
+				float3 forward = XMVector3Transform(float4(0, 0, 1, 1), float4x4::CreateRotationY(cameraRotation.y));
 				left.Normalize();
 				float3 movement(0, 0, 0);
 				if (kb.LeftShift) speed *= 2;//sprint
@@ -785,49 +612,50 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
 					velocity.y = jumpForce;
 					grounded = false;
 				}
-				if(!grounded)velocity += gravityDirection * gravityForce * deltaTime;//dont apply gravity if on ground
-				cameraPosition += movement*deltaTime + velocity*deltaTime;
+				if (!grounded)velocity += gravityDirection * gravityForce * deltaTime;//dont apply gravity if on ground
+				cameraPosition += movement * deltaTime + velocity * deltaTime;
 				//collision, only affects y-axis
-				float3 nextPos = cameraPosition + float3(0,-1,0);
+				float3 nextPos = cameraPosition + float3(0, -1, 0);
 				float hy = terrain.getHeightOfTerrainFromCoordinates(nextPos.x, nextPos.z);
 				if (nextPos.y < hy) {//if below terrain then add force up
 					cameraPosition.y += (hy - nextPos.y) * deltaTime * 5;
 					grounded = true;
-					velocity = float3(0,0,0);
+					velocity = float3(0, 0, 0);
 				}
 				else grounded = false;
 
 				//rotate
-				rotation += deltaTime*XM_2PI*0.25*(1.0f/4);
-				//update lightdata buffer
-				gDeviceContext->UpdateSubresource(gLightBuffer, 0, 0, &lights, 0, 0);
+				rotation += deltaTime * XM_2PI*0.25*(1.0f / 4);
 				//update cameradata buffer
-				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x,cameraPosition.y,cameraPosition.z,1);
+				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x, cameraPosition.y, cameraPosition.z, 1);
 				gDeviceContext->UpdateSubresource(gCameraBuffer, 0, 0, &cpD, 0, 0);
 
-				Render(); //8. Rendera
+				//Render_ShadowMap();
+				//Render(); //8. Rendera
+				drawToShadowMap();
+				Render();
 
 				RenderFSQ();
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
 			}
 			time = clock() - time;
-			deltaTime = (float)time/1000.0f;
+			deltaTime = (float)time / 1000.0f;
 		}
 
 		CoUninitialize();
 
 		gMatrixBuffer->Release();
-		gLightBuffer->Release();
 
 		gDepthStencilView->Release();
 		gBackbufferRTV->Release();
 		gSwapChain->Release();
 		gDevice->Release();
 		gDeviceContext->Release();
+
 		DestroyWindow(wndHandle);
 	}
 
-	return (int) msg.wParam;
+	return (int)msg.wParam;
 }
 
 void BindFirstPass()
@@ -854,10 +682,10 @@ void BindFirstPass()
 HWND InitWindow(HINSTANCE hInstance)
 {
 	WNDCLASSEX wcex = { 0 };
-	wcex.cbSize = sizeof(WNDCLASSEX); 
-	wcex.style          = CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc    = WndProc;
-	wcex.hInstance      = hInstance;
+	wcex.cbSize = sizeof(WNDCLASSEX);
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = WndProc;
+	wcex.hInstance = hInstance;
 	wcex.lpszClassName = L"BTH_D3D_DEMO";
 	if (!RegisterClassEx(&wcex))
 		return false;
@@ -881,13 +709,13 @@ HWND InitWindow(HINSTANCE hInstance)
 	return handle;
 }
 
-LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	switch (message) 
+	switch (message)
 	{
 	case WM_DESTROY:
 		PostQuitMessage(0);
-		break;	
+		break;
 	case WM_ACTIVATEAPP:
 		Keyboard::ProcessMessage(message, wParam, lParam);
 		//Mouse::ProcessMessage(message, wParam, lParam);
@@ -964,7 +792,7 @@ HRESULT CreateDirect3DContext(HWND wndHandle)
 		ID3D11Texture2D* tex = 0;
 		gDevice->CreateTexture2D(&DeStDesc, 0, &tex);
 		D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc;
-		ZeroMemory(&viewDesc,sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
+		ZeroMemory(&viewDesc, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
 		viewDesc.Format = DeStDesc.Format;
 		viewDesc.ViewDimension = D3D11_DSV_DIMENSION::D3D11_DSV_DIMENSION_TEXTURE2D;
 		viewDesc.Flags = 0;
@@ -983,6 +811,7 @@ HRESULT CreateDirect3DContext(HWND wndHandle)
 
 		// set the render target as the back buffer
 		gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, gDepthStencilView);
+
 	}
 	return hr;
 }

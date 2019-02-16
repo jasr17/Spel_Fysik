@@ -145,7 +145,6 @@ inline void Terrain::applyHeightToGrid(const wchar_t* filePath)
 			else {
 				grid[xx][yy].position.y = 0;
 			}
-			
 		}
 	}
 }

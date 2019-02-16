@@ -41,6 +41,9 @@
     <ClInclude Include="Mesh.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="LightManager.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -56,6 +59,9 @@
       <Filter>Effects</Filter>
     </FxCompile>
     <FxCompile Include="Effects\Fragment_onlyMesh.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
+    <FxCompile Include="Effects\Vertex_Light.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
     <FxCompile Include="Effects\Fragment_Deferred.hlsl">
