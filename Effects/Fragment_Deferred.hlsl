@@ -9,45 +9,54 @@ cbuffer lightBuffer : register(b0) {
 
 //Texturer/samplers
 
-Texture2D DiffuseMap :register( t0 );
-SamplerState AnisoSampler :register( s0 );
+Texture2D DiffuseMap		: register( t0 );
+SamplerState AnisoSampler;
 
-struct PixelShaderInput 
-{
-	float4 PositionScreenSpace	: SV_Position;
-	float2 texCoord				: TEXCOORD;
-	float3 normalWorldSpace		: NORMALWS;
-	float3 positionWorldSpace	: POSITIONWS;
+struct PixelShaderInput {
+	float4 Pos		: SV_POSITION;
+	float2 TexCoord : TEXCOORD;
 };
+//{
+//	float4 PositionScreenSpace	: SV_Position;
+//	float2 texCoord				: TEXCOORD;
+//	float3 normalWorldSpace		: NORMALWS;
+//	float3 positionWorldSpace	: POSITIONWS;
+//};
+//struct VS_OUT
+//{
+
 //Vi använder en Geometry-buffer för deferred shading
 //G-buffern består av 3 buffrar, diffuse/normal/position - buffer.
-struct PixelShaderOutput 
+//struct PixelShaderOutput 
+//{
+//	float4 diffuse	: SV_Target0; //dbuffer
+//	float4 normal	: SV_Target1; //nbuffer
+//	float4 position	: SV_Target2; //pbuffer
+//};
+
+cbuffer cameraBuffer : register(b1)
 {
-	float4 diffuse	:SV_Target0; //dbuffer
-	float4 normal	:SV_Target1; //nbuffer
-	float4 position	: SV_Target2; //pbuffer
-};
+	float4 camPos;
+}
 
 //G-bufferns pixelshader
-PixelShaderOutput PSMain(in PixelShaderInput input) : SV_Target
+float4 PS_main(in PixelShaderInput input) : SV_TARGET
 {
-	PixelShaderOutput output;
+	
+	////sample the diffusemap
+	//float3 diffuse = DiffuseMap.Sample(AnisoSampler, input.TexCoord).rbg;
 
-
-	//sample the diffusemap
-	float3 diffuse = DiffuseMap.Sample(AnisoSampler, input.TexCoord).rbg;
-
-	//Normalize the normal after interpolation
-	float3 normalWS = normalize(input.normalWorldSpace);
-
+	////Normalize the normal after interpolation
+	//float3 normalWS = normalize(input.normalWorldSpace);
+	float3 finalColor;
 	for (int i = 0; i < lightCount.x; i++)
 	{
-		float3 toLight = normalize(lightPos[i].xyz - posW);
+		float3 toLight = normalize(lightPos[i].xyz - position);
 		float dotNormaltoLight = dot(normal, toLight); //dot(normal, toLight) if less than one then the triangle is facing the other way, ignore
 		if (dotNormaltoLight > 0)
 		{
 			//diffuse
-			float distToLight = length(lightPos[i].xyz - posW);
+			float distToLight = length(lightPos[i].xyz - position);
 			float diffuse = dotNormaltoLight;
 			//specular
 			float3 toCam = normalize(camPos.xyz - posW);
@@ -58,10 +67,6 @@ PixelShaderOutput PSMain(in PixelShaderInput input) : SV_Target
 		}
 	}
 
-	//Output G-buffervalues.
-	output.normal = float4(normalWS, 1.0f);
-	output.diffuse = float4(diffuse, 1.0f);
-	output.position = float4(input.Position, 1.0f);
 
-	return output;
+	return float4(finalColor,1);
 }

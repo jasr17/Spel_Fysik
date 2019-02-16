@@ -1,9 +1,15 @@
-struct GeoOut
+struct PixelInput
 {
     float4 PosW : POSITION;
     float4 PosH : SV_POSITION;
     float2 TexCoord : TEXCOORD;
     float3 Normal : NORMAL;
+};
+struct PixelShaderOutput
+{
+	float4 diffuse	: SV_Target0; //dbuffer
+	float4 normal	: SV_Target1; //nbuffer
+	float4 position	: SV_Target2; //pbuffer
 };
 cbuffer lightBuffer : register(b0)
 {
@@ -16,9 +22,10 @@ cbuffer cameraBuffer : register(b1)
     float4 camPos;
 }
 
-float4 PS_main(GeoOut input) : SV_Target
+PixelShaderOutput PS_main(PixelInput input) : SV_Target
 {
-    float3 normal = input.Normal;
+	PixelShaderOutput op;
+    op.normal = input.Normal;
     //ambient
     float3 ambient = float3(0.1,0.1,0.1);
     //resource color
@@ -31,25 +38,27 @@ float4 PS_main(GeoOut input) : SV_Target
     float3 terrainColor = lerp(lerp(brown, grey, heightDiffuse), heightDiffuse > 0.4 ? lerp(green, white, sqrt((heightDiffuse - 0.4) / 0.6)) : green, pow(slope, 20));
 
     float3 finalColor = terrainColor*ambient;
-    for (int i = 0; i < lightCount.x; i++)
-    {
-        float3 toLight = normalize(lightPos[i].xyz - input.PosW.xyz);
-        float dotNormaltoLight = dot(normal, toLight); //dot(normal, toLight) if less than one then the triangle is facing the other way, ignore
-        if (dotNormaltoLight > 0)
-        {
-            //diffuse
-            float distToLight = length(lightPos[i].xyz - input.PosW.xyz);
-            float diffuse = dotNormaltoLight;
-            //specular
-            float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
-            float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
-            float specular = pow(max(dot(reflekt, toCam), 0), 50);
+    //for (int i = 0; i < lightCount.x; i++)
+    //{
+    //    float3 toLight = normalize(lightPos[i].xyz - input.PosW.xyz);
+    //    float dotNormaltoLight = dot(normal, toLight); //dot(normal, toLight) if less than one then the triangle is facing the other way, ignore
+    //    if (dotNormaltoLight > 0)
+    //    {
+    //        //diffuse
+    //        float distToLight = length(lightPos[i].xyz - input.PosW.xyz);
+    //        float diffuse = dotNormaltoLight;
+    //        //specular
+    //        float3 toCam = normalize(camPos.xyz - input.PosW.xyz);
+    //        float3 reflekt = normalize(2 * dotNormaltoLight * normal - toLight);
+    //        float specular = pow(max(dot(reflekt, toCam), 0), 50);
 
-            finalColor += (terrainColor * lightColor[i].rgb * diffuse * lightColor[i].a + terrainColor * specular) / pow(distToLight, 1);
-        }
-    }
+    //        finalColor += (terrainColor * lightColor[i].rgb * diffuse * lightColor[i].a + terrainColor * specular) / pow(distToLight, 1);
+    //    }
+    //}
 
     //return shadowedTextureColor
     finalColor = clamp(finalColor, float3(0, 0, 0), float3(1, 1, 1));
-    return float4(finalColor, 1);
+	op.diffuse = finalColor;
+	op.position = input.PosW
+    return op;
 }
