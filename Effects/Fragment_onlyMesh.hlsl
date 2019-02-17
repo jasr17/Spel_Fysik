@@ -11,7 +11,7 @@ struct PixelShaderOutput
 	float4 normal	: SV_Target1; //nbuffer
 	float4 position	: SV_Target2; //pbuffer
 };
-c/*buffer lightBuffer : register(b0)
+/*buffer lightBuffer : register(b0)
 {
     float4 lightCount;
     float4 lightPos[10];

@@ -14,6 +14,8 @@
 #include "Terrain.h"
 #include "LightManager.h"
 
+const int DEF_BUFFERCOUNT = 3;
+
 float deltaTime = 0;
 
 Array<Mesh> meshes;
@@ -233,24 +235,6 @@ bool createGBuffer() // Om denna flyttas till en egen klass senare behöver den t
 
 
 void BindFirstPass();
-void BindSecondPass();
-
-void CreateLightBuffer() {
-	D3D11_BUFFER_DESC desc;
-	memset(&desc, 0, sizeof(desc));
-	// what type of buffer will this be?
-	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	// what type of usage (press F1, read the docs)
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	// how big in bytes each element in the buffer is.
-	desc.ByteWidth = sizeof(LightData);
-
-	D3D11_SUBRESOURCE_DATA data;
-	data.pSysMem = &lights;
-
-	gDevice->CreateBuffer(&desc, &data, &gLightBuffer);
-	gDeviceContext->PSSetConstantBuffers(0, 1, &gLightBuffer);
-}
 
 void SetViewport()
 {
@@ -366,8 +350,7 @@ void RenderFSQ() {
 	};
 
 	gDeviceContext->PSSetShaderResources(0, DEF_BUFFERCOUNT, srvArray);
-	gDeviceContext->PSSetConstantBuffers(lights)
-
+	
 	gDeviceContext->Draw(4, 0);
 
 }
@@ -393,7 +376,7 @@ void Render() {
 	lightManager.updateLightBuffer();
 	lightManager.bindLightBuffer();
 	// set the render target as the back buffer
-	gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, gDepthStencilView);
+	//gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, gDepthStencilView);
 	// clear the back buffer to a deep blue
 	float3 darkBlue = float3(25.0f / 255, 25.0f / 255, 60.0f / 255)*0.5;
 	float clearColor[] = { darkBlue.x,darkBlue.y,darkBlue.z, 1 };
