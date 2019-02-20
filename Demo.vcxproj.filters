@@ -49,7 +49,16 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Effects\Fragment_Deferred.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
+    <FxCompile Include="Effects\Vertex_Deferred.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
     <FxCompile Include="Effects\Fragment.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
+    <FxCompile Include="Effects\Fragment_onlyMesh.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
     <FxCompile Include="Effects\Fragment_Terrain.hlsl">
@@ -58,16 +67,7 @@
     <FxCompile Include="Effects\Vertex.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
-    <FxCompile Include="Effects\Fragment_onlyMesh.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
     <FxCompile Include="Effects\Vertex_Light.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
-    <FxCompile Include="Effects\Fragment_Deferred.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
-    <FxCompile Include="Effects\Vertex_Deferred.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
   </ItemGroup>

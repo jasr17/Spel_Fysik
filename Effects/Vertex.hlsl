@@ -1,15 +1,15 @@
 struct VS_IN
 {
-	float3 Pos		: Position;
+	float3 Pos : Position;
     float2 TexCoord : TexCoordinate;
-    float3 Normal	: Normal;
+    float3 Normal : Normal;
 };
 struct GeoOut
 {
-    float4 PosW		: POSITION;
-    float4 PosH		: SV_POSITION;
+    float4 PosW : POSITION;
+    float4 PosH : SV_POSITION;
     float2 TexCoord : TEXCOORD;
-    float3 Normal	: NORMAL;
+    float3 Normal : NORMAL;
 };
 cbuffer cbuffs : register(b0)
 {

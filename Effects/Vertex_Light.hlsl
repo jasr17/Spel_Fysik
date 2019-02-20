@@ -1,3 +1,4 @@
+
 struct VS_IN
 {
 	float3 Pos : Position;

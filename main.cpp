@@ -89,10 +89,15 @@ struct FullScreenQuad {
 	ID3D11InputLayout *FSQInputLayout = nullptr;
 	
 	void createFSQ() {
-		corners[0] = Vertex(float3(Win_WIDTH / 2 * -1, Win_HEIGHT / 2, 0), float2(0, 0), float3(0, 0, -1));
-		corners[1] = Vertex(float3(Win_WIDTH / 2 , Win_HEIGHT / 2, 0), float2(1, 0), float3(0, 0, -1));
-		corners[2] = Vertex(float3(Win_WIDTH / 2 * -1, Win_HEIGHT / 2*-1, 0), float2(0, 1), float3(0, 0, -1));
-		corners[3] = Vertex(float3(Win_WIDTH / 2 , Win_HEIGHT / 2*-1, 0), float2(1, 1), float3(0, 0, -1));
+		/*corners[0] = Vertex(float3(Win_WIDTH / 20 * -1, Win_HEIGHT / 2, 0), float2(0, 0), float3(0, 0, -1));
+		corners[1] = Vertex(float3(Win_WIDTH / 20 , Win_HEIGHT / 2, 0), float2(1, 0), float3(0, 0, -1));
+		corners[2] = Vertex(float3(Win_WIDTH / 20 * -1, Win_HEIGHT / 2*-1, 0), float2(0, 1), float3(0, 0, -1));
+		corners[3] = Vertex(float3(Win_WIDTH / 20 , Win_HEIGHT / 2*-1, 0), float2(1, 1), float3(0, 0, -1));*/
+
+		corners[0] = Vertex(float3(-1, 1, 0), float2(0, 0), float3(0, 0, -1));
+		corners[1] = Vertex(float3(1, 1, 0), float2(1, 0), float3(0, 0, -1));
+		corners[2] = Vertex(float3(-1, -1, 0), float2(0, 1), float3(0, 0, -1));
+		corners[3] = Vertex(float3(1, -1, 0), float2(1, 1), float3(0, 0, -1));
 
 		D3D11_BUFFER_DESC bufDesc;
 		ZeroMemory(&bufDesc, sizeof(bufDesc));
@@ -232,7 +237,6 @@ bool createGBuffer() // Om denna flyttas till en egen klass senare behöver den t
 
 	return true;
 }
-
 
 void BindFirstPass();
 
@@ -439,6 +443,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		CreateMatrixDataBuffer();
 
 		gFSQ.createFSQ();
+		createGBuffer();
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
@@ -645,8 +650,7 @@ void BindFirstPass()
 {
 	//gDeviceContext->IASetInputLayout();
 	ID3D11RenderTargetView* renderTargets[] = {
-		gBackbufferRTV,
-		//geometryBuffer[0].renderTragetVeiw,
+		geometryBuffer[0].renderTragetVeiw,
 		geometryBuffer[1].renderTragetVeiw,
 		geometryBuffer[2].renderTragetVeiw,
 	};
@@ -655,7 +659,7 @@ void BindFirstPass()
 	//gDeviceContext->RSSetViewports(1,&)
 
 	//clear rendertargets
-	float colors[] = { 0,0,0,1.f };
+	float colors[] = { 0,1,0,1.f };
 	for(int i = 0; i < DEF_BUFFERCOUNT;i++)
 	gDeviceContext->ClearRenderTargetView(renderTargets[i], colors);
 
