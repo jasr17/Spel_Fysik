@@ -346,7 +346,8 @@ void RenderFSQ() {
 	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	gDeviceContext->IASetInputLayout(gFSQ.FSQInputLayout);
 
-	gDeviceContext->PSSetConstantBuffers(0, 1, &gCameraBuffer);
+	gDeviceContext->PSSetConstantBuffers(1, 1, &gCameraBuffer);
+	
 	ID3D11ShaderResourceView* srvArray[] = {
 		geometryBuffer[0].shaderResourceVeiw,
 		geometryBuffer[1].shaderResourceVeiw,

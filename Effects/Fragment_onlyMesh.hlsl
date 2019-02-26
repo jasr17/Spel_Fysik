@@ -34,7 +34,7 @@ PS_Out PS_main(GeoOut ip)
 	float3 textureColor = float3(1, 1, 1);
 	float3 finalColor = textureColor ;
 	op.diffuse = clamp(float4(finalColor,1),0,1);
-	op.position = ip.PosH;
+	op.position = ip.PosW;
 
 	return op;
 }
