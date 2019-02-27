@@ -362,17 +362,17 @@ void RenderFSQ() {
 
 
 void drawToShadowMap() {
-	for (int i = 0; i < lightManager.lightCount(); i++)
+	for (int iLight = 0; iLight < lightManager.lightCount(); iLight++)
 	{
-		lightManager.setShadowMapForDrawing(i);
+		lightManager.setShadowMapForDrawing(iLight);
 		//objects
-		for (int j = 0; j < objects.length(); j++)
+		for (int iObj = 0; iObj < objects.length(); iObj++)
 		{
-			lightManager.updateMatrixBuffer(objects[j].getWorldMatrix(),i);
-			objects[j].draw();
+			lightManager.updateMatrixBuffer(objects[iObj].getWorldMatrix(), iLight);
+			objects[iObj].draw();
 		}
 		//terrain
-		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(),i);
+		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(), iLight);
 		terrain.draw();
 	}
 }
