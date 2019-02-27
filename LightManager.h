@@ -68,7 +68,7 @@ inline void LightManager::updateMatrixBuffer(float4x4 worldMatrix, int index)
 
 inline void LightManager::bindShaderResourceDepthViews()
 {
-	gDeviceContext->PSSetShaderResources(0, lightCount(), shaderResourceViewsDepth);
+	gDeviceContext->PSSetShaderResources(3, lightCount(), shaderResourceViewsDepth);
 }
 
 inline void LightManager::bindLightBuffer()
