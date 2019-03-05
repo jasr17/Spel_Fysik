@@ -13,6 +13,7 @@
 #include "Object.h"
 #include "Terrain.h"
 #include "LightManager.h"
+#include "Deferred.h"
 
 const int DEF_BUFFERCOUNT = 3;
 
@@ -76,169 +77,10 @@ ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 ShaderSet gShader_Deferred;
 
-//Deffered shading
-struct RenderTarget {
-	ID3D11RenderTargetView		*renderTragetVeiw			= nullptr;
-	ID3D11Texture2D				*texture					= nullptr;
-	ID3D11ShaderResourceView	*shaderResourceVeiw			= nullptr;
-};
+////Deffered shading
 
-struct FullScreenQuad {
-	Vertex corners[4];
-	ID3D11Buffer *FSQVertexBuffer = nullptr;
-	ID3D11InputLayout *FSQInputLayout = nullptr;
-	
-	void createFSQ() {
-		/*corners[0] = Vertex(float3(Win_WIDTH / 20 * -1, Win_HEIGHT / 2, 0), float2(0, 0), float3(0, 0, -1));
-		corners[1] = Vertex(float3(Win_WIDTH / 20 , Win_HEIGHT / 2, 0), float2(1, 0), float3(0, 0, -1));
-		corners[2] = Vertex(float3(Win_WIDTH / 20 * -1, Win_HEIGHT / 2*-1, 0), float2(0, 1), float3(0, 0, -1));
-		corners[3] = Vertex(float3(Win_WIDTH / 20 , Win_HEIGHT / 2*-1, 0), float2(1, 1), float3(0, 0, -1));*/
+Deferred gDeferred;
 
-		corners[0] = Vertex(float3(-1, 1, 0), float2(0, 0), float3(0, 0, -1));
-		corners[1] = Vertex(float3(1, 1, 0), float2(1, 0), float3(0, 0, -1));
-		corners[2] = Vertex(float3(-1, -1, 0), float2(0, 1), float3(0, 0, -1));
-		corners[3] = Vertex(float3(1, -1, 0), float2(1, 1), float3(0, 0, -1));
-
-		D3D11_BUFFER_DESC bufDesc;
-		ZeroMemory(&bufDesc, sizeof(bufDesc));
-
-		bufDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-		bufDesc.Usage = D3D11_USAGE_DEFAULT;
-
-		bufDesc.ByteWidth = sizeof(corners);
-
-		D3D11_SUBRESOURCE_DATA data;
-		data.pSysMem = corners;
-
-		gDevice->CreateBuffer(&bufDesc, &data, &FSQVertexBuffer);
-		
-	}
-	void killItWithFire() {
-		FSQInputLayout->Release();
-		FSQVertexBuffer->Release();
-	}
-};
-
-RenderTarget geometryBuffer[DEF_BUFFERCOUNT];
-FullScreenQuad gFSQ;
-
-
-bool createGBuffer() // Om denna flyttas till en egen klass senare behöver den tillgång till Device och skärm info(width,height,depth
-{
-	HRESULT result;
-
-	// Initialize the render target texture description.
-	D3D11_TEXTURE2D_DESC textureDesc;
-	ZeroMemory(&textureDesc, sizeof(textureDesc));
-
-	// Setup the render target texture description.
-	textureDesc.Width = Win_WIDTH;
-	textureDesc.Height = Win_HEIGHT;
-	textureDesc.MipLevels = 1;
-	textureDesc.ArraySize = 1;
-	textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.Usage = D3D11_USAGE_DEFAULT;
-	textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	textureDesc.CPUAccessFlags = 0;
-	textureDesc.MiscFlags = 0;
-
-	// Create the render target textures.
-	for (int i = 0; i < DEF_BUFFERCOUNT; i++)
-	{
-		result = gDevice->CreateTexture2D(&textureDesc, NULL, &geometryBuffer[i].texture);
-		if (FAILED(result))
-		{
-			return false;
-		}
-	}
-
-	// Setup the description of the render target view.
-	D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
-	renderTargetViewDesc.Format = textureDesc.Format;
-	renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-	renderTargetViewDesc.Texture2D.MipSlice = 0;
-
-	// Create the render target views.
-	for (int i = 0; i < DEF_BUFFERCOUNT; i++)
-	{
-		result = gDevice->CreateRenderTargetView(geometryBuffer[i].texture, &renderTargetViewDesc, &geometryBuffer[i].renderTragetVeiw);
-		if (FAILED(result))
-		{
-			return false;
-		}
-	}
-
-	// Setup the description of the shader resource view.
-	D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
-	shaderResourceViewDesc.Format = textureDesc.Format;
-	shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
-	shaderResourceViewDesc.Texture2D.MipLevels = 1;
-
-	// Create the shader resource views.
-	for (int i = 0; i < DEF_BUFFERCOUNT; i++)
-	{
-		result = gDevice->CreateShaderResourceView(geometryBuffer[i].texture, &shaderResourceViewDesc, &geometryBuffer[i].shaderResourceVeiw);
-		if (FAILED(result))
-		{
-			return false;
-		}
-	}
-
-	//// Initialize the description of the depth buffer.
-	//D3D11_TEXTURE2D_DESC depthBufferDesc;
-	//ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-
-	//// Set up the description of the depth buffer.
-	//depthBufferDesc.Width = Win_WIDTH;
-	//depthBufferDesc.Height = Win_HEIGHT;
-	//depthBufferDesc.MipLevels = 1;
-	//depthBufferDesc.ArraySize = 1;
-	//depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	//depthBufferDesc.SampleDesc.Count = 1;
-	//depthBufferDesc.SampleDesc.Quality = 0;
-	//depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	//depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	//depthBufferDesc.CPUAccessFlags = 0;
-	//depthBufferDesc.MiscFlags = 0;
-
-	//// Create the texture for the depth buffer using the filled out description.
-	//result = gDevice->CreateTexture2D(&depthBufferDesc, NULL, &m_depthStencilBuffer);
-	//if (FAILED(result))
-	//{
-	//	return false;
-	//}
-
-	//// Initailze the depth stencil view description.
-	//ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-
-	//// Set up the depth stencil view description.
-	//D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-	//depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	//depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	//depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-	//// Create the depth stencil view.
-	//result = device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-	//if (FAILED(result))
-	//{
-	//	return false;
-	//}
-
-	//// Setup the viewport for rendering.
-	//m_viewport.Width = (float)textureWidth;
-	//m_viewport.Height = (float)textureHeight;
-	//m_viewport.MinDepth = 0.0f;
-	//m_viewport.MaxDepth = 1.0f;
-	//m_viewport.TopLeftX = 0.0f;
-	//m_viewport.TopLeftY = 0.0f;
-
-	return true;
-}
-
-void BindFirstPass();
 
 void SetViewport()
 {
@@ -332,35 +174,6 @@ void drawBoundingBox(Object obj) {
 	cube.draw();
 }
 
-void RenderFSQ() {
-	
-	gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, NULL);
-	float clearColor[] = { 1,1,1,1 };
-	gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
-
-	gShader_Deferred.bindShadersAndLayout();
-	UINT strides = sizeof(Vertex);
-	UINT offset = 0;
-
-	gDeviceContext->IASetVertexBuffers(0, 1, &gFSQ.FSQVertexBuffer,&strides, &offset);
-	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	gDeviceContext->IASetInputLayout(gFSQ.FSQInputLayout);
-
-	gDeviceContext->PSSetConstantBuffers(1, 1, &gCameraBuffer);
-	
-	ID3D11ShaderResourceView* srvArray[] = {
-		geometryBuffer[0].shaderResourceVeiw,
-		geometryBuffer[1].shaderResourceVeiw,
-		geometryBuffer[2].shaderResourceVeiw,
-	};
-
-	gDeviceContext->PSSetShaderResources(0, DEF_BUFFERCOUNT, srvArray);
-	
-	gDeviceContext->Draw(4, 0);
-
-}
-
-
 void drawToShadowMap() {
 	for (int iLight = 0; iLight < lightManager.lightCount(); iLight++)
 	{
@@ -376,6 +189,7 @@ void drawToShadowMap() {
 		terrain.draw();
 	}
 }
+
 void Render() {
 	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
 	lightManager.updateLightBuffer();
@@ -389,7 +203,7 @@ void Render() {
 	// use DeviceContext to talk to the API
 	/*gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
 	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH,1,0);*/
-	BindFirstPass();
+	gDeferred.BindFirstPass(gDeviceContext,gDepthStencilView);
 
 	//objects
 	shader_object.bindShadersAndLayout();
@@ -419,6 +233,7 @@ void Render() {
 	updateMatrixBuffer(terrain.getWorldMatrix());
 	terrain.draw();
 }
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
 	MSG msg = { 0 };
@@ -435,16 +250,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	if (wndHandle)
 	{
 		CreateDirect3DContext(wndHandle); //2. Skapa och koppla SwapChain, Device och Device Context
-
+		gDeferred.initDeferred(gDevice);
 		SetViewport(); //3. Sätt viewport
 
 		CreateCameraBuffer();
 
 
 		CreateMatrixDataBuffer();
-
-		gFSQ.createFSQ();
-		createGBuffer();
+		
+		
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
@@ -513,7 +327,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_Terrain.hlsl");
 		gShader_Deferred.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_Deferred.hlsl");
-
+		gDeferred.setShaderSet(gShader_Deferred);
 		ShowWindow(wndHandle, nCmdShow);
 
 		clock_t time;
@@ -624,7 +438,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				drawToShadowMap();
 				Render();
 
-				RenderFSQ();
+				//RenderFSQ();
+				gDeferred.BindSecondPass(gDeviceContext,gBackbufferRTV,gCameraBuffer);
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
 			}
 			time = clock() - time;
@@ -646,26 +461,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 	return (int)msg.wParam;
 }
-
-void BindFirstPass()
-{
-	//gDeviceContext->IASetInputLayout();
-	ID3D11RenderTargetView* renderTargets[] = {
-		geometryBuffer[0].renderTragetVeiw,
-		geometryBuffer[1].renderTragetVeiw,
-		geometryBuffer[2].renderTragetVeiw,
-	};
-	
-	gDeviceContext->OMSetRenderTargets(DEF_BUFFERCOUNT, renderTargets, gDepthStencilView);
-	//gDeviceContext->RSSetViewports(1,&)
-
-	//clear rendertargets
-	float colors[] = { 0,1,0,1.f };
-	for(int i = 0; i < DEF_BUFFERCOUNT;i++)
-	gDeviceContext->ClearRenderTargetView(renderTargets[i], colors);
-
-	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-}
+//
+//void BindFirstPass()
+//{
+//	//gDeviceContext->IASetInputLayout();
+//	ID3D11RenderTargetView* renderTargets[] = {
+//		geometryBuffer[0].renderTragetVeiw,
+//		geometryBuffer[1].renderTragetVeiw,
+//		geometryBuffer[2].renderTragetVeiw,
+//	};
+//	
+//	gDeviceContext->OMSetRenderTargets(DEF_BUFFERCOUNT, renderTargets, gDepthStencilView);
+//	//gDeviceContext->RSSetViewports(1,&)
+//
+//	//clear rendertargets
+//	float colors[] = { 0,1,0,1.f };
+//	for(int i = 0; i < DEF_BUFFERCOUNT;i++)
+//	gDeviceContext->ClearRenderTargetView(renderTargets[i], colors);
+//
+//	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+//}
 
 HWND InitWindow(HINSTANCE hInstance)
 {

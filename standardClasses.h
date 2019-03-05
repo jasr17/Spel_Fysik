@@ -40,7 +40,7 @@ struct Vertex {
 	}
 };
 
-float random(float min, float max) {
+static float random(float min, float max) {
 	return min + ((float)(rand() % 10000) / 10000)*(max - min);
 }
 
