@@ -81,6 +81,21 @@ ShaderSet gShader_Deferred;
 
 Deferred gDeferred;
 
+// Viewdata for use in setting view matrix and view frustum
+struct ViewData {
+	XMFLOAT3 up;
+	float fowAngle, aspectRatio, nearZ, farZ;
+
+	ViewData()
+	{
+		up = XMFLOAT3(0, 1, 0);
+		fowAngle = XM_PI * 0.45;
+		aspectRatio = (float)(Win_WIDTH) / (Win_HEIGHT);
+		nearZ = 0.01;
+		farZ = 50;
+	}
+}viewData;
+
 
 void SetViewport()
 {
@@ -125,10 +140,10 @@ void CreateCameraBuffer() {
 
 void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
 	XMFLOAT3 at = cameraPosition + cameraForward;
-	XMFLOAT3 up(0, 1, 0);
-	XMMATRIX view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
+	//XMFLOAT3 up(0, 1, 0);
+	XMMATRIX view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 
-	XMMATRIX perspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 50);
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(viewData.fowAngle, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
 
 	WorldViewPerspectiveMatrix mat;
 	mat.mWorld = XMMatrixTranspose(worldMat);
