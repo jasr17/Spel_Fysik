@@ -106,6 +106,7 @@
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="OBJLoader.h" />
+    <ClInclude Include="QuadTree.h" />
     <ClInclude Include="standardClasses.h" />
     <ClInclude Include="Terrain.h" />
   </ItemGroup>
