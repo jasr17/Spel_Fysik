@@ -1,14 +1,15 @@
 #pragma once
 #include "standardClasses.h"
 
-struct FrustumPlane {
-	float3 mPoint;
-	float3 mNormal;  // Normals pointing inwards
-};
 enum FrustumSides{Near, Left, Right, Far, Top, Bottom};
 
 class Frustum
 {	
+struct FrustumPlane {
+	float3 mPoint;
+	float3 mNormal;  // Normals pointing inwards
+};
+
 private:
 	FrustumPlane mPlanes[6];
 
@@ -52,10 +53,10 @@ inline void Frustum::constructFrustum(float3 camPos, float3 camDir, float3 up, f
 	float halfWidthNear = nearZ * tan(fowAngle / 2);
 	float halfHeightNear = halfWidthNear / aspectRatio;
 
-	float3 pointLeftUpFar = middleFar + vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
-	float3 pointRightUpFar = middleFar - vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
-	float3 pointLeftBottomFar = middleFar + vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
-	float3 pointRightBottomFar = middleFar - vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
+	float3 pointLeftUpFar		= middleFar + vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
+	float3 pointRightUpFar		= middleFar - vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
+	float3 pointLeftBottomFar	= middleFar + vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
+	float3 pointRightBottomFar	= middleFar - vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
 
 	mPlanes[Near].mPoint = middleNear;
 	mPlanes[Near].mNormal = vectorLeft.Cross(vectorDown);
@@ -67,7 +68,7 @@ inline void Frustum::constructFrustum(float3 camPos, float3 camDir, float3 up, f
 	mPlanes[Right].mNormal = vectorDown.Cross(pointRightBottomFar - mPlanes[Right].mPoint);
 	
 	mPlanes[Far].mPoint = middleFar;
-	mPlanes[Far].mNormal = vectorDown.Cross(pointLeftUpFar - pointRightBottomFar);
+	mPlanes[Far].mNormal = vectorDown.Cross(pointLeftUpFar - pointRightUpFar);
 	
 	mPlanes[Top].mPoint = middleNear - vectorDown * halfHeightNear;
 	mPlanes[Top].mNormal = (pointRightUpFar - mPlanes[Top].mPoint).Cross(pointLeftUpFar - mPlanes[Top].mPoint);

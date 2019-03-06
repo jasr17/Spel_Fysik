@@ -97,6 +97,8 @@ struct ViewData {
 	}
 }viewData;
 
+QuadTree gQuadTree(float3(0, 2, 0), float3(10, 5, 10), 5);
+
 
 void SetViewport()
 {
@@ -142,8 +144,16 @@ void CreateCameraBuffer() {
 void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
-	XMMATRIX view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 
+	bool povPlayer = true;
+	XMMATRIX view;
+	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
+	else
+	{
+		XMFLOAT3 camPos = float3(8, 10, 0);
+		at = float3(0, 0, 0);
+		view = XMMatrixLookAtLH(XMLoadFloat3(&camPos), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
+	}
 	XMMATRIX perspective = XMMatrixPerspectiveFovLH(viewData.fowAngle, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
 
 	WorldViewPerspectiveMatrix mat;
@@ -221,13 +231,28 @@ void Render() {
 	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH,1,0);*/
 	gDeferred.BindFirstPass(gDeviceContext,gDepthStencilView);
 
+
+
+
+
+	Frustum frustum;
+	frustum.constructFrustum(cameraPosition, cameraForward, viewData.up, viewData.fowAngle, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
+
+	// Använd denna istället för att se en smal linje 
+	//frustum.constructFrustum(cameraPosition, cameraForward, viewData.up, viewData.fowAngle/4, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
+
+	Array<int> indexArray;
+	
+	gQuadTree.checkagainstFrustum(indexArray, frustum);
+	
 	//objects
 	shader_object.bindShadersAndLayout();
-	for (int i = 0; i < objects.length(); i++)
+	for (int i = 0; i < indexArray.length(); i++)
 	{
-		updateMatrixBuffer(objects[i].getWorldMatrix());
-		objects[i].draw();
+		updateMatrixBuffer(objects[indexArray.get(i)].getWorldMatrix());
+		objects[indexArray.get(i)].draw();
 	}
+
 	//lights
 	shader_object_onlyMesh.bindShadersAndLayout();
 	for (int i = 0; i < lightManager.lightCount(); i++)
@@ -273,9 +298,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 
 		CreateMatrixDataBuffer();
-		
-		
-
+			   
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
 		lightManager.createBuffers();
@@ -345,6 +368,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		gShader_Deferred.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_Deferred.hlsl");
 		gDeferred.setShaderSet(gShader_Deferred);
 		ShowWindow(wndHandle, nCmdShow);
+
+		// Inserts objects in quadtree and partitions it.
+		for (int i = 0; i < objects.length(); i++)
+		{
+			gQuadTree.insert(objects[i].getBoundingBoxPos(), objects[i].getBoundingBoxSize(), i);
+		}
+
 
 		clock_t time;
 		while (WM_QUIT != msg.message)

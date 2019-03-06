@@ -49,7 +49,9 @@ private:
 			mAABB = AABB(centerPos, halfLength);
 			mIndex = index;
 		}
+		Obj(){}
 	};
+	enum IntersectType{Outside, Intersects, Inside};
 	
 	// Member variables
 	QuadTree* mChildren[4];
@@ -58,15 +60,20 @@ private:
 	AABB mBoundingBox;
 	Array<Obj> mObjects;
 
+	float3 mPoints[8];
+	float3 mDiagonals[4];
+
 	// Help functions
 	bool insert(const Obj& obj);
 	void createChildren();
 	
-	int intersectsFrustum(Frustum frustum);			// 0: outside, 1: inside and 2: intersects
+	int intersectsFrustum(Frustum frustum);			
 	void getContent(Array<int>& indexArray);
 	void getAllContentFromLeaves(Array<int>& indexArray);
+	void setUpPointsAndDiagonals();
 public:
 	QuadTree(const AABB& boundingBox, int nrOfPartitions);
+	QuadTree(float3 centerPos, float3 halfLengths, int nrOfPartitions);
 	~QuadTree();
 
 	bool insert(const float3 centerPos, const float3 halfLength, const int index);
@@ -82,6 +89,18 @@ QuadTree::QuadTree(const AABB& boundingBox, int nrOfPartitions)
 
 	mBoundingBox = boundingBox;
 	mNrOfPartitions = nrOfPartitions;	
+	setUpPointsAndDiagonals();
+}
+
+inline QuadTree::QuadTree(float3 centerPos = float3(0, 0, 0), float3 halfLengths = float3(1, 1, 1), int nrOfPartitions = 3)
+	:QuadTree(AABB(centerPos, halfLengths), nrOfPartitions)
+{/*
+	for (int i = 0; i < 4; i++)
+		mChildren[i] = nullptr;
+
+	mBoundingBox = AABB(centerPos, halfLengths);
+	mNrOfPartitions = nrOfPartitions;
+	setUpPointsAndDiagonals();*/
 }
 
 QuadTree::~QuadTree()
@@ -136,18 +155,20 @@ inline void QuadTree::checkagainstFrustum(Array<int>& indexArray, Frustum frustu
 	*/
 
 	int intersects = intersectsFrustum(frustum);
-	if (mChildren[0] != nullptr)
+
+
+	if (mChildren[0] == nullptr)
 	{
 		if (intersects > 0)
 		{
 			getContent(indexArray);
 		}
 	}
-	else if (intersects == 2)
+	else if (intersects == Inside)
 	{
 		getAllContentFromLeaves(indexArray);
 	}
-	else if (intersects == 1)
+	else if (intersects == Intersects)
 	{
 		for (int i = 0; i < 4; i++)
 		{
@@ -170,16 +191,93 @@ inline void QuadTree::createChildren()
 	  
 	float3 direction[4] = { float3(-1, 0, 1), float3(1, 0, 1) ,float3(-1, 0, -1), float3(1, 0, -1) };
 	for (int i = 0; i < 4; i++) 
-		mChildren[0] = new QuadTree(AABB(mBoundingBox.mCenterPos + newHalfSizes * direction[i], newHalfSizes), mNrOfPartitions - 1);
+		mChildren[i] = new QuadTree(AABB(mBoundingBox.mCenterPos + newHalfSizes * direction[i], newHalfSizes), mNrOfPartitions - 1);
 }
 
 
 inline int QuadTree::intersectsFrustum(Frustum frustum)		
 {
 	// returns 0: outside, 1: intersects and 2: contained
+	
+	int returnValue = 2;
+	float similarity;
+	float newSimilarity;
+	int mostSimilarDiagonal;
+	for (int iPlane = 0; iPlane < 6 && returnValue > 0; iPlane++)
+	{
+		similarity = 0;
+		newSimilarity = 0;
+		mostSimilarDiagonal = -1;
+		for (int iDiagonal = 0; iDiagonal < 4; iDiagonal++)
+		{
+			newSimilarity = frustum.getPlanes()[iPlane].mNormal.Dot(mDiagonals[iDiagonal]);
+			if (newSimilarity > similarity)
+			{
+				similarity = newSimilarity;
+				mostSimilarDiagonal = iDiagonal;
+			}
+		}
 
-			//index 2n and 2n+1 is a pair
-	float3 points[8];
+		// Distance taken from the length of a vector (from the plane to a point) projected onto the plane normal.
+		// Think the projection formula but without the resulting vector.
+		// The normals are normalized.
+		// Normals point inwards. 
+		float p = (mPoints[mostSimilarDiagonal * 2] - frustum.getPlanes()[iPlane].mPoint).Dot(frustum.getPlanes()[iPlane].mNormal);
+		float n = (mPoints[mostSimilarDiagonal * 2 + 1] - frustum.getPlanes()[iPlane].mPoint).Dot(frustum.getPlanes()[iPlane].mNormal);
+
+		if (p < n)
+		{
+			float temp = p;
+			p = n;
+			n = temp;
+		}
+
+		if (p < 0)
+			returnValue = Outside;
+		else if (n < 0)
+			returnValue = Intersects;
+	}
+	return returnValue;
+}
+
+inline void QuadTree::getContent(Array<int>& indexArray)
+{
+	int nr = indexArray.length();
+
+	bool isInArray = false;
+	for (int i = 0; i < mObjects.length(); i++)
+	{
+		isInArray = false;
+		for (int iArray = 0; iArray < indexArray.length() && isInArray == false; iArray++)
+		{
+			if (indexArray.get(iArray) == mObjects[i].mIndex)
+				isInArray = true;
+		}
+		if(!isInArray)
+			indexArray.add(mObjects.get(i).mIndex);
+	}
+
+}
+
+inline void QuadTree::getAllContentFromLeaves(Array<int>& indexArray)
+{
+	if (mChildren[0] != nullptr)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			mChildren[i]->getAllContentFromLeaves(indexArray);
+		}
+	}
+	else
+	{
+		getContent(indexArray);
+	}
+}
+
+inline void QuadTree::setUpPointsAndDiagonals()
+{
+	//index 2n and 2n+1 is a pair
+	
 	//points[0] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength;
 	//points[1] = mBoundingBox.mCenterPos - mBoundingBox.mHalfLength;
 	//
@@ -195,82 +293,13 @@ inline int QuadTree::intersectsFrustum(Frustum frustum)
 	float3 direction[4] = { float3(1, 1, 1), float3(-1, 1, 1) ,float3(1, -1, 1), float3(1, 1, -1) };
 	for (int i = 0; i < 4; i++)
 	{
-		points[2 * i]		= mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * direction[i];
-		points[2 * i + 1]	= mBoundingBox.mCenterPos - mBoundingBox.mHalfLength * direction[i];
+		mPoints[2 * i] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * direction[i];
+		mPoints[2 * i + 1] = mBoundingBox.mCenterPos - mBoundingBox.mHalfLength * direction[i];
 	}
 
-	float3 diagonals[4];
 	for (int i = 0; i < 4; i++)
 	{
-		diagonals[i] = points[2 * i] - points[2 * i + 1];
-		diagonals[i].Normalize();
-	}
-
-	int returnValue = 2;
-	float similarity;
-	float newSimilarity;
-	int mostSimilarDiagonal;
-	for (int iPlane = 0; iPlane < 6 && returnValue == 2; iPlane++)
-	{
-		similarity = 0;
-		newSimilarity = 0;
-		mostSimilarDiagonal = -1;
-		for (int iDiagonal = 0; iDiagonal < 4; iDiagonal++)
-		{
-			newSimilarity = frustum.getPlanes()[iPlane].mNormal.Dot(diagonals[iDiagonal]);
-			if (newSimilarity > similarity)
-			{
-				similarity = newSimilarity;
-				mostSimilarDiagonal = iDiagonal;
-			}
-		}
-
-		// Distance taken from the length of a vector (from the plane to a point) projected onto the plane normal.
-		// Think the projection formula but without the resulting vector.
-		// The normals are normalized.
-		float p = (frustum.getPlanes()[iPlane].mPoint - points[mostSimilarDiagonal * 2]).Dot(frustum.getPlanes()[iPlane].mNormal);
-		float n = (frustum.getPlanes()[iPlane].mPoint - points[mostSimilarDiagonal * 2 + 1]).Dot(frustum.getPlanes()[iPlane].mNormal);
-
-		if (p < n)
-		{
-			float temp = p;
-			p = n;
-			n = temp;
-		}
-
-		// Normals point inwards. Therefore different than lecture slides
-		if (p < 0)
-			returnValue = 0;
-		else if (n > 0)
-		{
-			// Do nothing. Box is maybe inside
-		}
-		else
-			returnValue = 1;
-	}
-	return returnValue;
-}
-
-inline void QuadTree::getContent(Array<int>& indexArray)
-{
-	for (int i = 0; i < mObjects.length(); i++)
-	{
-		// Kan lägga in att inga dubletter läggs in senare. Antingen här eller en sök funktion i Array
-		indexArray.add(mObjects.get(i).mIndex);
-	}
-}
-
-inline void QuadTree::getAllContentFromLeaves(Array<int>& indexArray)
-{
-	if (mChildren != nullptr)
-	{
-		for (int i = 0; i < 4; i++)
-		{
-			mChildren[i]->getAllContentFromLeaves(indexArray);
-		}
-	}
-	else
-	{
-		getContent(indexArray);
+		mDiagonals[i] = mPoints[2 * i] - mPoints[2 * i + 1];
+		mDiagonals[i].Normalize();
 	}
 }
