@@ -101,6 +101,7 @@
   <ItemGroup>
     <ClInclude Include="Array.h" />
     <ClInclude Include="Deferred.h" />
+    <ClInclude Include="Frustum.h" />
     <ClInclude Include="FullScreenQuad.h" />
     <ClInclude Include="LightManager.h" />
     <ClInclude Include="Mesh.h" />

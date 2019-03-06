@@ -14,6 +14,7 @@
 #include "Terrain.h"
 #include "LightManager.h"
 #include "Deferred.h"
+#include "QuadTree.h"
 
 const int DEF_BUFFERCOUNT = 3;
 
