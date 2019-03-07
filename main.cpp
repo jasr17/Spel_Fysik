@@ -145,7 +145,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = true;
+	bool povPlayer = false;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -214,6 +214,35 @@ void drawToShadowMap() {
 		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(), iLight);
 		terrain.draw();
 	}
+}
+
+void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle, float aspectRatio, float nearZ, float farZ)
+{
+	camDir.Normalize();
+	float3 middleFar = camPos + camDir * farZ;
+	float3 middleNear = camPos + camDir * nearZ;
+
+	float3 vectorLeft = camDir.Cross(up);
+	vectorLeft.Normalize();
+	float3 vectorDown = camDir.Cross(vectorLeft);
+	vectorDown.Normalize();
+
+	float halfWidthFar = farZ * tan(fowAngle / 2);
+	float halfHeightFar = halfWidthFar / aspectRatio;
+
+	float halfWidthNear = nearZ * tan(fowAngle / 2);
+	float halfHeightNear = halfWidthNear / aspectRatio;
+
+	float3 pointLeftUpFar = middleFar + vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
+	float3 pointRightUpFar = middleFar - vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
+	float3 pointLeftBottomFar = middleFar + vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
+	float3 pointRightBottomFar = middleFar - vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
+	objects[0].setRotation(float3(cameraRotation.x,cameraRotation.y,0));
+	objects[0].setPosition(camPos);
+	objects[1].setPosition(pointLeftUpFar);
+	objects[2].setPosition(pointRightUpFar);
+	objects[3].setPosition(pointLeftBottomFar);
+	objects[4].setPosition(pointRightBottomFar);
 }
 
 void Render() {
@@ -318,6 +347,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		float3 s = terrain.getTerrainSize();
 		float3 scale(0.05,0.05,0.05);
 		objects.appendCapacity(1000);
+		for (int i = 0; i < 5; i++)
+		{
+			Object frustumCube;
+			frustumCube.setScale(float3(0.5,0.5,0.5));
+			frustumCube.giveMesh(&meshes[2]);
+			objects.add(frustumCube);
+		}
 		for (int i = 0; i < 0; i++)
 		{
 			Object swd = Object(
@@ -473,6 +509,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 				else grounded = false;
 
+				//frustum balls
+				updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ,4);
 				//rotate
 				rotation += deltaTime * XM_2PI*0.25*(1.0f / 4);
 				//update cameradata buffer
