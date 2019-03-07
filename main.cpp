@@ -97,7 +97,7 @@ struct ViewData {
 	}
 }viewData;
 
-QuadTree gQuadTree(float3(0, 0, 0), float3(10, 10, 10), 5);
+QuadTree gQuadTree(float3(0, 0, 0), float3(10, 10, 10), 2);
 
 
 void SetViewport()
@@ -145,7 +145,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = true;
+	bool povPlayer = false;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -227,11 +227,11 @@ void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle
 	float3 vectorDown = camDir.Cross(vectorLeft);
 	vectorDown.Normalize();
 
-	float halfWidthFar = farZ * tan(fowAngle / 2);
-	float halfHeightFar = halfWidthFar / aspectRatio;
+	float halfHeightFar = farZ * tan(fowAngle / 2);
+	float halfWidthFar = halfHeightFar * aspectRatio;
 
-	float halfWidthNear = nearZ * tan(fowAngle / 2);
-	float halfHeightNear = halfWidthNear / aspectRatio;
+	float halfHeightNear = nearZ * tan(fowAngle / 2);
+	float halfWidthNear = halfHeightNear * aspectRatio;
 
 	float3 pointLeftUpFar = middleFar + vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
 	float3 pointRightUpFar = middleFar - vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
@@ -359,8 +359,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		{
 			Object frustumCube;
 			frustumCube.setScale(float3(0.2,0.2,0.2));
-			if(i == 0)
-				frustumCube.setScale(float3(0.0, 0.0, 0.0));
+			/*if(i == 0)
+				frustumCube.setScale(float3(0.0, 0.0, 0.0));*/
 			frustumCube.giveMesh(&meshes[2]);
 			objects.add(frustumCube);
 		}

@@ -47,11 +47,11 @@ inline void Frustum::constructFrustum(float3 camPos, float3 camDir, float3 up, f
 	float3 vectorDown = camDir.Cross(vectorLeft);
 	vectorDown.Normalize();
 
-	float halfWidthFar = farZ * tan(fowAngle / 2);
-	float halfHeightFar = halfWidthFar / aspectRatio;
+	float halfHeightFar = farZ * tan(fowAngle / 2);
+	float halfWidthFar = halfHeightFar * aspectRatio;
 
-	float halfWidthNear = nearZ * tan(fowAngle / 2);
-	float halfHeightNear = halfWidthNear / aspectRatio;
+	float halfHeightNear = nearZ * tan(fowAngle / 2);
+	float halfWidthNear = halfHeightNear * aspectRatio;
 
 	float3 pointLeftUpFar		= middleFar + vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
 	float3 pointRightUpFar		= middleFar - vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
