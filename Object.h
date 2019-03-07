@@ -7,12 +7,12 @@ private:
 	float3 position = float3(0,0,0);
 	float3 rotation = float3(0,0,0);
 	float3 scale = float3(1,1,1);
-	bool rotated = false;
+	bool ifChanged = false;
 
 	Mesh* mesh = nullptr;
 
 public:
-	bool popRotated();
+	bool popIfChanged();
 	void giveMesh(Mesh* _mesh);
 	float4x4 getWorldMatrix();
 	void setPosition(float3 pos);
@@ -65,10 +65,10 @@ inline float3 Object::getRotatedBoundingBoxSize() const
 	}
 	return float3((MinMaxXPosition.y - MinMaxXPosition.x) / 2, (MinMaxYPosition.y - MinMaxYPosition.x) / 2, (MinMaxZPosition.y - MinMaxZPosition.x) / 2);
 }
-inline bool Object::popRotated()
+inline bool Object::popIfChanged()
 {
-	bool r = rotated;
-	rotated = false;
+	bool r = ifChanged;
+	ifChanged = false;
 	return r;
 }
 inline void Object::giveMesh(Mesh * _mesh)
@@ -83,33 +83,37 @@ inline float4x4 Object::getWorldMatrix()
 inline void Object::setPosition(float3 pos)
 {
 	position = pos;
+	ifChanged = true;
 }
 inline void Object::setRotation(float3 rot)
 {
 	rotation = rot;
+	ifChanged = true;
 }
 inline void Object::rotateX(float x)
 {
 	rotation.x += x;
-	rotated = true;
+	ifChanged = true;
 }
 inline void Object::rotateY(float y)
 {
 	rotation.y += y;
-	rotated = true;
+	ifChanged = true;
 }
 inline void Object::rotateZ(float z)
 {
 	rotation.z += z;
-	rotated = true;
+	ifChanged = true;
 }
 inline void Object::setScale(float3 _scale)
 {
 	scale = _scale;
+	ifChanged = true;
 }
 inline void Object::move(float3 offset)
 {
 	position += offset;
+	ifChanged = true;
 }
 inline void Object::draw()
 {

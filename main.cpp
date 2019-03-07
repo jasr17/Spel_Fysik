@@ -145,7 +145,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = false;
+	bool povPlayer = true;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -270,9 +270,17 @@ void Render() {
 	// Använd denna istället för att se en smal linje 
 	//frustum.constructFrustum(cameraPosition, cameraForward, viewData.up, viewData.fowAngle/4, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
 
+	for (int i = 0; i < objects.length(); i++)
+	{
+		if (objects[i].popIfChanged())
+		{
+			gQuadTree.updateObj(objects[i].getBoundingBoxPos(), objects[i].getRotatedBoundingBoxSize(), i);
+		}
+	}
+
 	Array<int> indexArray;
 	
-	gQuadTree.checkagainstFrustum(indexArray, frustum);
+	gQuadTree.checkAgainstFrustum(indexArray, frustum);
 	
 	//objects
 	shader_object.bindShadersAndLayout();
@@ -350,10 +358,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		for (int i = 0; i < 5; i++)
 		{
 			Object frustumCube;
-			frustumCube.setScale(float3(0.5,0.5,0.5));
+			frustumCube.setScale(float3(0.2,0.2,0.2));
+			if(i == 0)
+				frustumCube.setScale(float3(0.0, 0.0, 0.0));
 			frustumCube.giveMesh(&meshes[2]);
 			objects.add(frustumCube);
 		}
+
+		
+		int nrOfItemsToAdd = 100;
+
 		for (int i = 0; i < 0; i++)
 		{
 			Object swd = Object(
@@ -363,7 +377,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				&meshes[0]);
 			objects.add(swd);
 		}
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object tree = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
@@ -373,7 +387,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			);
 			objects.add(tree);
 		}
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object rock = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
@@ -383,7 +397,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			);
 			objects.add(rock);
 		}
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object pineTree = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
@@ -393,7 +407,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			);
 			objects.add(pineTree);
 		}
-		objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
+		//House
+		//objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
 
 		sphere.giveMesh(&meshes[1]);
 		cube.giveMesh(&meshes[2]);
@@ -408,7 +423,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		// Inserts objects in quadtree and partitions it.
 		for (int i = 0; i < objects.length(); i++)
 		{
-			gQuadTree.insertToRoot(objects[i].getBoundingBoxPos(), objects[i].getBoundingBoxSize(), i);
+			gQuadTree.insertToRoot(objects[i].getBoundingBoxPos(), objects[i].getRotatedBoundingBoxSize(), i);
 		}
 
 
@@ -510,7 +525,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				else grounded = false;
 
 				//frustum balls
-				updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ,4);
+				updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
 				//rotate
 				rotation += deltaTime * XM_2PI*0.25*(1.0f / 4);
 				//update cameradata buffer

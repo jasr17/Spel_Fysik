@@ -84,7 +84,7 @@ public:
 	bool insertToRoot(const float3 centerPos, const float3 halfLength, const int index);
 	bool updateObj(const float3 centerPos, const float3 halfLength, const int index);
 	
-	void checkagainstFrustum(Array<int>& indexArray, Frustum frustum);
+	void checkAgainstFrustum(Array<int>& indexArray, Frustum frustum);
 	
 };
 
@@ -100,13 +100,8 @@ QuadTree::QuadTree(const AABB& boundingBox, int nrOfPartitions)
 
 inline QuadTree::QuadTree(float3 centerPos = float3(0, 0, 0), float3 halfLengths = float3(1, 1, 1), int nrOfPartitions = 3)
 	:QuadTree(AABB(centerPos, halfLengths), nrOfPartitions)
-{/*
-	for (int i = 0; i < 4; i++)
-		mChildren[i] = nullptr;
+{
 
-	mBoundingBox = AABB(centerPos, halfLengths);
-	mNrOfPartitions = nrOfPartitions;
-	setUpPointsAndDiagonals();*/
 }
 
 QuadTree::~QuadTree()
@@ -141,11 +136,16 @@ inline bool QuadTree::insert(const Obj& obj)
 	return intersects;
 }
 
+
 inline bool QuadTree::insertToRoot(const float3 centerPos, const float3 halfLength, const int index)
 {
-	mObjects.add(Obj(centerPos, halfLength, index));
+	bool returnValue = insert(Obj(centerPos, halfLength, index));
 
-	return insert(Obj(centerPos, halfLength, index));	
+	// Keeps old object for easy deleting when updating.
+	if (mNrOfPartitions != 0)
+		mObjects.add(Obj(centerPos, halfLength, index));
+	   
+	return returnValue;
 }
 
 inline bool QuadTree::updateObj(const float3 centerPos, const float3 halfLength, const int index)
@@ -162,7 +162,7 @@ inline bool QuadTree::updateObj(const float3 centerPos, const float3 halfLength,
 	return indexInArray != -1;
 }
 
-inline void QuadTree::checkagainstFrustum(Array<int>& indexArray, Frustum frustum)
+inline void QuadTree::checkAgainstFrustum(Array<int>& indexArray, Frustum frustum)
 {
 	/*
 	if ( leaf)
@@ -194,7 +194,7 @@ inline void QuadTree::checkagainstFrustum(Array<int>& indexArray, Frustum frustu
 	{
 		for (int i = 0; i < 4; i++)
 		{
-			mChildren[i]->checkagainstFrustum(indexArray, frustum);
+			mChildren[i]->checkAgainstFrustum(indexArray, frustum);
 		}
 	}
 }
@@ -269,14 +269,10 @@ inline void QuadTree::getContent(Array<int>& indexArray)
 	bool isInArray = false;
 	for (int i = 0; i < mObjects.length(); i++)
 	{
-		isInArray = false;
-		for (int iArray = 0; iArray < indexArray.length() && isInArray == false; iArray++)
+		if (indexArray.find(mObjects[i].mIndex) == -1)
 		{
-			if (indexArray.get(iArray) == mObjects[i].mIndex)
-				isInArray = true;
+			indexArray.add(mObjects[i].mIndex);
 		}
-		if(!isInArray)
-			indexArray.add(mObjects.get(i).mIndex);
 	}
 
 }
@@ -317,10 +313,7 @@ inline void QuadTree::setUpPointsAndDiagonals()
 	{
 		mPoints[2 * i] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * direction[i];
 		mPoints[2 * i + 1] = mBoundingBox.mCenterPos - mBoundingBox.mHalfLength * direction[i];
-	}
-
-	for (int i = 0; i < 4; i++)
-	{
+	
 		mDiagonals[i] = mPoints[2 * i] - mPoints[2 * i + 1];
 		mDiagonals[i].Normalize();
 	}
