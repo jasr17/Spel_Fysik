@@ -50,6 +50,10 @@ private:
 			mIndex = index;
 		}
 		Obj(){}
+		bool operator==(const Obj& other)   // Only tests index to be able to check an object that has moved
+		{
+			return mIndex == other.mIndex;
+		}
 	};
 	enum IntersectType{Outside, Intersects, Inside};
 	
@@ -71,15 +75,17 @@ private:
 	void getContent(Array<int>& indexArray);
 	void getAllContentFromLeaves(Array<int>& indexArray);
 	void setUpPointsAndDiagonals();
+	void deleteObj(const Obj& obj);
 public:
 	QuadTree(const AABB& boundingBox, int nrOfPartitions);
 	QuadTree(float3 centerPos, float3 halfLengths, int nrOfPartitions);
 	~QuadTree();
 
-	bool insert(const float3 centerPos, const float3 halfLength, const int index);
+	bool insertToRoot(const float3 centerPos, const float3 halfLength, const int index);
+	bool updateObj(const float3 centerPos, const float3 halfLength, const int index);
 	
 	void checkagainstFrustum(Array<int>& indexArray, Frustum frustum);
-
+	
 };
 
 QuadTree::QuadTree(const AABB& boundingBox, int nrOfPartitions)
@@ -135,9 +141,25 @@ inline bool QuadTree::insert(const Obj& obj)
 	return intersects;
 }
 
-inline bool QuadTree::insert(const float3 centerPos, const float3 halfLength, const int index)
+inline bool QuadTree::insertToRoot(const float3 centerPos, const float3 halfLength, const int index)
 {
-	return insert(Obj(centerPos, halfLength, index));
+	mObjects.add(Obj(centerPos, halfLength, index));
+
+	return insert(Obj(centerPos, halfLength, index));	
+}
+
+inline bool QuadTree::updateObj(const float3 centerPos, const float3 halfLength, const int index)
+{
+	Obj newObj(centerPos, halfLength, index);
+	int indexInArray = mObjects.find(newObj);
+	if (indexInArray != -1)
+	{
+		Obj oldObj = mObjects.get(indexInArray);
+		deleteObj(oldObj);
+		mObjects.set(indexInArray, newObj);
+		insert(newObj);
+	}
+	return indexInArray != -1;
 }
 
 inline void QuadTree::checkagainstFrustum(Array<int>& indexArray, Frustum frustum)
@@ -301,5 +323,24 @@ inline void QuadTree::setUpPointsAndDiagonals()
 	{
 		mDiagonals[i] = mPoints[2 * i] - mPoints[2 * i + 1];
 		mDiagonals[i].Normalize();
+	}
+}
+
+inline void QuadTree::deleteObj(const Obj & obj)
+{
+	if (mBoundingBox.intersectsAABB(obj.mAABB))
+	{
+		if (mChildren[0] != nullptr)
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				mChildren[i]->deleteObj(obj);
+			}
+		}
+
+		else
+		{			
+			mObjects.remove(mObjects.find(obj));
+		}
 	}
 }

@@ -372,7 +372,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		// Inserts objects in quadtree and partitions it.
 		for (int i = 0; i < objects.length(); i++)
 		{
-			gQuadTree.insert(objects[i].getBoundingBoxPos(), objects[i].getBoundingBoxSize(), i);
+			gQuadTree.insertToRoot(objects[i].getBoundingBoxPos(), objects[i].getBoundingBoxSize(), i);
 		}
 
 
