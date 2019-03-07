@@ -210,7 +210,7 @@ inline int QuadTree::intersectsFrustum(Frustum frustum)
 		mostSimilarDiagonal = -1;
 		for (int iDiagonal = 0; iDiagonal < 4; iDiagonal++)
 		{
-			newSimilarity = frustum.getPlanes()[iPlane].mNormal.Dot(mDiagonals[iDiagonal]);
+			newSimilarity = abs(frustum.getPlanes()[iPlane].mNormal.Dot(mDiagonals[iDiagonal]));
 			if (newSimilarity > similarity)
 			{
 				similarity = newSimilarity;

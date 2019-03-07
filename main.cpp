@@ -97,7 +97,7 @@ struct ViewData {
 	}
 }viewData;
 
-QuadTree gQuadTree(float3(0, 2, 0), float3(10, 5, 10), 5);
+QuadTree gQuadTree(float3(0, 0, 0), float3(10, 10, 10), 5);
 
 
 void SetViewport()
