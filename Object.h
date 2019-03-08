@@ -23,6 +23,7 @@ public:
 	void draw();
 	float3 getBoundingBoxPos() const;
 	float3 getBoundingBoxSize() const;
+	float3 getRotatedBoundingBoxSize()const;
 	float3 getRotation() const;
 	float3 getPosition() const;
 	float3 getScale() const;
@@ -30,6 +31,38 @@ public:
 	Object(float3 _position = float3(0,0,0), float3 _rotation = float3(0,0,0), float3 _scale = float3(1,1,1), Mesh* _mesh = nullptr);
 	~Object();
 };
+inline float3 Object::getRotatedBoundingBoxSize() const
+{
+	Matrix rotMat = Matrix::CreateRotationZ(rotation.z)*Matrix::CreateRotationX(rotation.x)*Matrix::CreateRotationY(rotation.y);
+	float3 size = getBoundingBoxSize();
+	float2 MinMaxXPosition = float2(-1, -1);//.x is min, .y is max
+	float2 MinMaxYPosition = float2(-1, -1);
+	float2 MinMaxZPosition = float2(-1, -1);
+	float3 points[8] =
+	{
+		float3(size.x,size.y,size.z) ,
+		float3(size.x,size.y,-size.z) ,
+		float3(size.x,-size.y,size.z) ,
+		float3(size.x,-size.y,-size.z) ,
+		float3(-size.x,size.y,size.z) ,
+		float3(-size.x,size.y,-size.z) ,
+		float3(-size.x,-size.y,size.z) ,
+		float3(-size.x,-size.y,-size.z)
+	};
+	for (int i = 0; i < 8; i++)
+	{
+		float3 p = XMVector3Transform(points[i],rotMat);
+		if (p.x > MinMaxXPosition.y || MinMaxXPosition.y == -1)MinMaxXPosition.y = p.x;
+		if (p.x < MinMaxXPosition.x || MinMaxXPosition.x == -1)MinMaxXPosition.x = p.x;
+
+		if (p.y > MinMaxYPosition.y || MinMaxYPosition.y == -1)MinMaxYPosition.y = p.y;
+		if (p.y < MinMaxYPosition.x || MinMaxYPosition.x == -1)MinMaxYPosition.x = p.y;
+
+		if (p.z > MinMaxZPosition.y || MinMaxZPosition.y == -1)MinMaxZPosition.y = p.z;
+		if (p.z < MinMaxZPosition.x || MinMaxZPosition.x == -1)MinMaxZPosition.x = p.z;
+	}
+	return float3((MinMaxXPosition.y - MinMaxXPosition.x) / 2, (MinMaxYPosition.y - MinMaxYPosition.x) / 2, (MinMaxZPosition.y - MinMaxZPosition.x) / 2);
+}
 inline void Object::giveMesh(Mesh * _mesh)
 {
 	mesh = _mesh;

@@ -292,7 +292,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		{
 			Object tree = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
-				float3(0, random(0, 3.14 * 2), 0),
+				float3(0, 0, 0),
 				scale,
 				&meshes[3]
 			);
