@@ -18,7 +18,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     float x = DTid.x, y = DTid.y;
     float4 pix = float4(0, 0, 0, 1);
 
-    const int size = 7;
+    const int size = 50;
     float gaussian[size];
     //set gaussian values
     float sum = 0;

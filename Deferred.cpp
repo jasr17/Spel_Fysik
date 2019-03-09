@@ -158,7 +158,7 @@ void Deferred::BindFirstPass(ID3D11DeviceContext* context,ID3D11DepthStencilView
 	context->OMSetRenderTargets(DEFERRED_BUFFERCOUNT, renderTargets, zBuffer);
 
 	//clear rendertargets
-	float color[] = { 0,1,0,1.f };
+	float color[] = { 0,0,0,1.f };
 	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
 		context->ClearRenderTargetView(renderTargets[i], color);
 	}
@@ -189,4 +189,9 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 	context->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
 
 	context->Draw(4, 0);
+}
+
+ID3D11Resource * Deferred::getResource( int index) const
+{
+	return gBuffer[index].texture;
 }

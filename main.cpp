@@ -197,17 +197,12 @@ void Render() {
 	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
 	lightManager.updateLightBuffer();
 	lightManager.bindLightBuffer();
-	// set the render target as the back buffer
-	//gDeviceContext->OMSetRenderTargets(1, &gBackbufferRTV, gDepthStencilView);
 	// clear the back buffer to a deep blue
 	float3 darkBlue = float3(25.0f / 255, 25.0f / 255, 60.0f / 255)*0.5;
 	float clearColor[] = { darkBlue.x,darkBlue.y,darkBlue.z, 1 };
-
-	// use DeviceContext to talk to the API
-	/*gDeviceContext->ClearRenderTargetView(gBackbufferRTV, clearColor);
-	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH,1,0);*/
+	//bind and clear renderTargets(color,normal,position,specular maps)
 	gDeferred.BindFirstPass(gDeviceContext,gDepthStencilView);
-
+				//DRAW
 	//objects
 	shader_object.bindShadersAndLayout();
 	for (int i = 0; i < objects.length(); i++)
@@ -263,6 +258,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		CreateMatrixDataBuffer();
 		
 		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
+		creationCheck = glowBlurrer.initilize(DXGI_FORMAT_R32G32B32A32_FLOAT, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
@@ -441,7 +437,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				drawToShadowMap();
 				//draw deferred maps
 				Render();
-
 				//draw deferred maps to full quad
 				gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
 
