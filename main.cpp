@@ -14,6 +14,7 @@
 #include "Terrain.h"
 #include "LightManager.h"
 #include "Deferred.h"
+#include "TextureBlurrer.h"
 
 const int DEF_BUFFERCOUNT = 3;
 
@@ -81,6 +82,8 @@ ShaderSet gShader_Deferred;
 
 Deferred gDeferred;
 
+//GaussianBlurring
+TextureBlurrer textureBlurrer;
 
 void SetViewport()
 {
@@ -249,6 +252,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 	if (wndHandle)
 	{
+
 		CreateDirect3DContext(wndHandle); //2. Skapa och koppla SwapChain, Device och Device Context
 		gDeferred.initDeferred(gDevice);
 		SetViewport(); //3. Sätt viewport
@@ -258,7 +262,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		CreateMatrixDataBuffer();
 		
-		
+		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
@@ -433,13 +437,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x, cameraPosition.y, cameraPosition.z, 1);
 				gDeviceContext->UpdateSubresource(gCameraBuffer, 0, 0, &cpD, 0, 0);
 
-				//Render_ShadowMap();
-				//Render(); //8. Rendera
+				//draw shadow maps
 				drawToShadowMap();
+				//draw deferred maps
 				Render();
 
-				//RenderFSQ();
-				gDeferred.BindSecondPass(gDeviceContext,gBackbufferRTV,gCameraBuffer);
+				//draw deferred maps to full quad
+				gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
+
+				//blur backBuffer
+				if (state.rightButton) {
+					ID3D11Resource* r;
+					gBackbufferRTV->GetResource(&r);
+					textureBlurrer.blurTexture(r,Win_WIDTH,Win_HEIGHT);
+				}
+
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
 			}
 			time = clock() - time;
@@ -461,26 +473,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 	return (int)msg.wParam;
 }
-//
-//void BindFirstPass()
-//{
-//	//gDeviceContext->IASetInputLayout();
-//	ID3D11RenderTargetView* renderTargets[] = {
-//		geometryBuffer[0].renderTragetVeiw,
-//		geometryBuffer[1].renderTragetVeiw,
-//		geometryBuffer[2].renderTragetVeiw,
-//	};
-//	
-//	gDeviceContext->OMSetRenderTargets(DEF_BUFFERCOUNT, renderTargets, gDepthStencilView);
-//	//gDeviceContext->RSSetViewports(1,&)
-//
-//	//clear rendertargets
-//	float colors[] = { 0,1,0,1.f };
-//	for(int i = 0; i < DEF_BUFFERCOUNT;i++)
-//	gDeviceContext->ClearRenderTargetView(renderTargets[i], colors);
-//
-//	gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-//}
 
 HWND InitWindow(HINSTANCE hInstance)
 {

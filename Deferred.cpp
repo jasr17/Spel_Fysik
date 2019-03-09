@@ -45,6 +45,7 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 
 		// Setup the description of the render target view.
 		D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
+		ZeroMemory(&renderTargetViewDesc, sizeof(renderTargetViewDesc));
 		renderTargetViewDesc.Format = textureDesc.Format;
 		renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		renderTargetViewDesc.Texture2D.MipSlice = 0;
@@ -61,6 +62,7 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 
 		// Setup the description of the shader resource view.
 		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+		ZeroMemory(&shaderResourceViewDesc, sizeof(shaderResourceViewDesc));
 		shaderResourceViewDesc.Format = textureDesc.Format;
 		shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;

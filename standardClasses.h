@@ -13,8 +13,8 @@ using namespace std;
 using namespace DirectX;
 using namespace SimpleMath;
 
-#define Win_WIDTH 1920*0.75//640
-#define Win_HEIGHT 1080*0.75//480
+#define Win_WIDTH 1920*0.75//960
+#define Win_HEIGHT 1080*0.75//540
 
 using float2 = DirectX::SimpleMath::Vector2;
 using float3 = DirectX::SimpleMath::Vector3;

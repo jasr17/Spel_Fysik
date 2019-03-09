@@ -56,6 +56,9 @@
     <ClInclude Include="FullScreenQuad.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TextureBlurrer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -80,6 +83,12 @@
       <Filter>Effects</Filter>
     </FxCompile>
     <FxCompile Include="Effects\Vertex_Light.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
+    <FxCompile Include="GaussianHorizontalBlur.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
+    <FxCompile Include="GaussianVerticalBlur.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
   </ItemGroup>
