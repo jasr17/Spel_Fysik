@@ -16,6 +16,7 @@ private:
 
 	HRESULT createComputeShader(LPCWSTR filePath, ID3D11ComputeShader** computeShader);
 	bool createResources(DXGI_FORMAT format);
+	void release();
 public:
 	void blurTexture(ID3D11Resource* texture, int size_x, int size_y);
 	bool initilize(DXGI_FORMAT format, LPCWSTR horizontalComputeFilePath, LPCWSTR verticalComputeFilePath);
@@ -28,8 +29,8 @@ void TextureBlurrer::blurTexture(ID3D11Resource* texture, int size_x, int size_y
 	if (initilized) {
 		//fix dispatch size to cover the entire texture, DX, DY are the correct ones. 
 		float dx = (float)size_x / 20, dy = (float)size_y / 20;
-		int DX = dx + (dx - (int)dx > 0.01);
-		int DY = dy + (dy - (int)dy > 0.01);
+		int DX = dx + (dx - (int)dx > 0.001);
+		int DY = dy + (dy - (int)dy > 0.001);
 		//copy texture for input
 		gDeviceContext->CopyResource(gInTex, texture);
 
@@ -103,7 +104,7 @@ inline bool TextureBlurrer::createResources(DXGI_FORMAT format)
 	inTexDesc.Height = Win_HEIGHT;
 	inTexDesc.MipLevels = 1;
 	inTexDesc.ArraySize = 1;
-	inTexDesc.Format = format;//DXGI_FORMAT_R32G32B32A32_FLOAT;//DXGI_FORMAT_R8G8B8A8_UNORM;
+	inTexDesc.Format = format;
 	inTexDesc.SampleDesc.Count = 1;
 	inTexDesc.SampleDesc.Quality = 0;
 	inTexDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -129,7 +130,7 @@ inline bool TextureBlurrer::createResources(DXGI_FORMAT format)
 	blurredTexDesc.Height = Win_HEIGHT;
 	blurredTexDesc.MipLevels = 1;
 	blurredTexDesc.ArraySize = 1;
-	blurredTexDesc.Format = format;//DXGI_FORMAT_R32G32B32A32_FLOAT;//DXGI_FORMAT_R8G8B8A8_UNORM;
+	blurredTexDesc.Format = format;
 	blurredTexDesc.SampleDesc.Count = 1;
 	blurredTexDesc.SampleDesc.Quality = 0;
 	blurredTexDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -153,10 +154,23 @@ inline bool TextureBlurrer::createResources(DXGI_FORMAT format)
 	return true;
 }
 
+inline void TextureBlurrer::release()
+{
+	if (initilized) {
+		gCSH->Release();
+		gCSV->Release();
+		gTexUAV->Release();
+		gUAV->Release();
+		gInTex->Release();
+		gInSRV->Release();
+	}
+}
+
 inline TextureBlurrer::TextureBlurrer() {
 
 }
 
 inline TextureBlurrer::~TextureBlurrer()
 {
+	release();
 }
