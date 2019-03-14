@@ -258,7 +258,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		CreateMatrixDataBuffer();
 		
 		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
-		creationCheck = glowBlurrer.initilize(DXGI_FORMAT_R32G32B32A32_FLOAT, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
+		//creationCheck = glowBlurrer.initilize(DXGI_FORMAT_R32G32B32A32_FLOAT, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
