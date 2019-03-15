@@ -16,6 +16,7 @@
 #include "Deferred.h"
 #include "QuadTree.h"
 #include "TextureBlurrer.h"
+#include "FrontToBack.h"
 
 const int DEF_BUFFERCOUNT = 3;
 
@@ -300,13 +301,24 @@ void Render() {
 	//bind and clear renderTargets(color,normal,position,specular maps)
 	gDeferred.BindFirstPass(gDeviceContext,gDepthStencilView);
 	
-				//DRAW
-	//objects
-	shader_object.bindShadersAndLayout();
+	// Front to back culling. Only consider those in frustum
+	// Can be tested by not rendering the first or last few objects
+	FrontToBack frontToBack;
+	float distance = 0;
 	for (int i = 0; i < gIndexArray.length(); i++)
 	{
-		updateMatrixBuffer(objects[gIndexArray.get(i)].getWorldMatrix());
-		objects[gIndexArray.get(i)].draw();
+		distance = ( cameraPosition - objects[gIndexArray[i]].getPosition() ).Length();
+		frontToBack.insert(distance, gIndexArray[i]);
+	}
+	Array<int> sortedIndexArray = frontToBack.getSortedIndexArray();
+	
+				//DRAW
+	//objects
+	shader_object.bindShadersAndLayout();	
+	for (int i = 0; i < sortedIndexArray.length(); i++)
+	{
+		updateMatrixBuffer(objects[sortedIndexArray[i]].getWorldMatrix());
+		objects[sortedIndexArray[i]].draw();
 	}
 
 	//lights
