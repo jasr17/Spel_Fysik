@@ -306,7 +306,7 @@ inline bool OBJLoader::loadFromFile(string filename)
 		loaded = true;
 		return loadMaterialFromFile(filename + ".mtl");
 	}
-	return false;
+	return true;
 }
 
 inline Array<Vertex> OBJLoader::createTriangularMesh(Array<int>& partCount) const
@@ -344,7 +344,20 @@ inline Array<Vertex> OBJLoader::createTriangularMesh(Array<int>& partCount) cons
 
 inline void OBJLoader::getMaterialParts(Array<MaterialPart>& _materials) const
 {
-	_materials = materials;
+	_materials.reset();
+	_materials.appendCapacity(meshParts.length());
+	for (int i = 0; i < meshParts.length(); i++)
+	{
+		for (int j = 0; j < materials.length(); j++)
+		{
+			string n1 = meshParts[i].materialName;
+			string n2 = materials[j].materialName;
+			if (meshParts[i].materialName == materials[j].materialName) {
+				_materials.add(materials[j]);
+				break;
+			}
+		}
+	}
 }
 /*Each vertex gets its own normal thats averaged by all normals connected to the vertex position*/
 inline void OBJLoader::averagePointNormals()

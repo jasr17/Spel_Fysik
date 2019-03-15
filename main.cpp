@@ -258,7 +258,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		CreateMatrixDataBuffer();
 		
 		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
-		creationCheck = glowBlurrer.initilize(DXGI_FORMAT_R32G32B32A32_FLOAT, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
@@ -268,26 +267,29 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		//meshes
 		meshes.appendCapacity(100);//CANNOT COPY MESH OBJECT
-		meshes.add(Mesh()); meshes[0].loadMesh("Meshes/Sword", smoothShading);
-		meshes.add(Mesh()); meshes[1].loadMesh("Meshes/sphere", smoothShading);
-		meshes.add(Mesh()); meshes[2].loadMesh("Meshes/cube", flatShading);
-		meshes.add(Mesh()); meshes[3].loadMesh("Meshes/tree1", smoothShading);
-		meshes.add(Mesh()); meshes[4].loadMesh("Meshes/rock1", smoothShading);
-		meshes.add(Mesh()); meshes[5].loadMesh("Meshes/pineTree", smoothShading);
-		meshes.add(Mesh()); meshes[6].loadMesh("Meshes/cottage", flatShading);
+		bool meshCheck;
+		meshes.add(Mesh()); meshCheck = meshes[0].loadMesh("Meshes/Sword", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[1].loadMesh("Meshes/sphere", smoothShading);
+		meshes.add(Mesh()); meshCheck = meshes[2].loadMesh("Meshes/cube", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[3].loadMesh("Meshes/tree1", smoothShading);
+		meshes.add(Mesh()); meshCheck = meshes[4].loadMesh("Meshes/rock1", smoothShading);
+		meshes.add(Mesh()); meshCheck = meshes[5].loadMesh("Meshes/pineTree", smoothShading);
+		meshes.add(Mesh()); meshCheck = meshes[6].loadMesh("Meshes/cottage", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[7].loadMesh("Meshes/sheep", flatShading);
 
 		float3 s = terrain.getTerrainSize();
-		float3 scale(0.05,0.05,0.05);
+		float3 scale(0.07,0.07,0.07);
 		objects.appendCapacity(1000);
-		for (int i = 0; i < 0; i++)
+		for (int i = 0; i < 10; i++)
 		{
 			Object swd = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
-				float3(0.1, 0.1, 0.1),
-				&meshes[0]);
+				scale*5,
+				&meshes[7]);
 			objects.add(swd);
 		}
+		objects.add(Object(float3(0,0,17),float3(0,0,0),float3(3,3,3),&meshes[0]));
 		for (int i = 0; i < 100; i++)
 		{
 			Object tree = Object(
