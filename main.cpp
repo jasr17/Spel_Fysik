@@ -278,6 +278,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		float3 s = terrain.getTerrainSize();
 		float3 scale(0.05,0.05,0.05);
+		scale *= 2;
 		objects.appendCapacity(1000);
 		for (int i = 0; i < 0; i++)
 		{

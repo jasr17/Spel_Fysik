@@ -1,7 +1,7 @@
 // Konstanter
 #define SHADOW_EPSILON 0.00001
-#define SMAP_WIDTH  1080 * 0.9
-#define SMAP_HEIGHT 1920 * 0.9
+#define SMAP_WIDTH  (1080 * 0.9)
+#define SMAP_HEIGHT (1920 * 0.9)
 
 struct ShaderLight
 {
@@ -32,33 +32,27 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	// sets coordinates from a [-1, 1] range to [0, 1]. Flips y since directx 0 starts on top
 	float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
 
+	float2 mapSize = float2(SMAP_WIDTH, SMAP_HEIGHT);
 	float2 dx = float2(1.0f / SMAP_WIDTH, 1.0f / SMAP_HEIGHT); // size of one texture sample
+	
+	float2 texelPos = uvCoord * mapSize; 
+	float2 lerps = frac(texelPos); // Posision on the texel. Used in linear interpolation to judge weight of contributon
 
-	// Compares (depth - bias) with the shadowmap
-	// 
+	// Aligns uvCoords 
+	uvCoord = (texelPos - lerps) / mapSize;
+
+	// Compares (depth - bias) with the shadowmap on 4 neighburing texels
 	float s0 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord).r);
 	float s1 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
 	float s2 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r);
 	float s3 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r);
 
-	// copy pasta från lektion slide
-	//float s0 = (shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord).r + SHADOW_EPSILON < depth) ? 0.0f : 1.0f;
-	//float s1 = (shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r + SHADOW_EPSILON < depth) ? 0.0f : 1.0f;
-	//float s2 = (shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r + SHADOW_EPSILON < depth) ? 0.0f : 1.0f;
-	//float s3 = (shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r + SHADOW_EPSILON < depth) ? 0.0f : 1.0f;
-
-	
-	// Transform uv coords to texel space
-	float2 texelPos = uvCoord *float2(SMAP_WIDTH, SMAP_HEIGHT);
-	//texelPos.x *= SMAP_WIDTH;
-	//texelPos.y *= SMAP_HEIGHT;
-	float2 lerps = frac(texelPos);
-	//return lerps.y;
+	// Interpolates the result of the sampling
 	float shadowCoeff = lerp( lerp(s0, s1, lerps.x), lerp(s2, s3, lerps.x), lerps.y);
 	
+	// Very blocky version
 	//shadowCoeff = (s0 + s1 + s2 + s3) / 4;
 
-	return s0;
 	return shadowCoeff;
 }
 
@@ -80,7 +74,7 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	for (int i = 0; i < lightCount.x; i++)
     {
 		float shadowCoeff = checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);
-		return checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);
+		//return checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);
         if (shadowCoeff > 0)
         {
 
@@ -101,7 +95,7 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
                 float specularStrength = pow(max(dot(reflekt, toCam), 0), specular.w);
 
 				
-				finalColor += (lightIntensity * (albeno.xyz * lightColor * diffuseStrength + albeno.xyz * specularStrength * specular.rgb) / pow(distToLight, 0));// *shadowCoeff;
+				finalColor += (lightIntensity * (albeno.xyz * lightColor * diffuseStrength * shadowCoeff + albeno.xyz * specularStrength * specular.rgb) / pow(distToLight, 0));
             }
         }
     }
@@ -116,7 +110,7 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	float2 texelPos = uvCoord * float2(SMAP_WIDTH, SMAP_HEIGHT);
 
 	float s = shadowMap[0].Sample(AnisoSampler, uvCoord).r;
-	return float4(s, s, s, 1);
+	//return float4(s, s, s, 1);
 	// 
 	//float s0 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord).r);
 	//float s1 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
@@ -125,8 +119,8 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	//return float4(s0, s1, s2, s3);
 
 	//// Grid for seing shadowmap texels
-	if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
-		return float4(0, 0.3, 0, 1);
+	/*if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
+		return float4(0, 0.3, 0, 1);*/
 
 	return clamp(float4(finalColor,1),0,1);
 }
