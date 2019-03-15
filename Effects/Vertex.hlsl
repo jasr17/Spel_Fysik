@@ -13,7 +13,7 @@ struct GeoOut
 };
 cbuffer cbuffs : register(b0)
 {
-    matrix mWorld, mInvTraWorld, mWorldViewPerspective, mLightWVP;
+    matrix mWorld, mInvTraWorld, mWorldViewPerspective;
 };
 
 //-----------------------------------------------------------------------------------------
