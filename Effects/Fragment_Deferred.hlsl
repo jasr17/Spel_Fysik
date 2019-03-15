@@ -58,7 +58,7 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	
 	//shadowCoeff = (s0 + s1 + s2 + s3) / 4;
 
-	
+	return s0;
 	return shadowCoeff;
 }
 
@@ -80,6 +80,7 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	for (int i = 0; i < lightCount.x; i++)
     {
 		float shadowCoeff = checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);
+		return checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);
         if (shadowCoeff > 0)
         {
 
@@ -99,8 +100,8 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
                 float3 reflekt = normalize(2 * dotNormaltoLight * normal.xyz - toLight);
                 float specularStrength = pow(max(dot(reflekt, toCam), 0), specular.w);
 
-
-				finalColor += (lightIntensity * (albeno.xyz * lightColor * diffuseStrength + albeno.xyz * specularStrength * specular.rgb) / pow(distToLight, 0)) * shadowCoeff;
+				
+				finalColor += (lightIntensity * (albeno.xyz * lightColor * diffuseStrength + albeno.xyz * specularStrength * specular.rgb) / pow(distToLight, 0));// *shadowCoeff;
             }
         }
     }
@@ -108,10 +109,14 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	float4 pos = mul(position, lights[0].viewPerspectiveMatrix);
 	pos.xyz /= pos.w;
 	float depth = pos.z;
+
+
 	float2 dx = float2(1.0f / SMAP_WIDTH, 1.0f / SMAP_HEIGHT); // size of one texture sample
 	float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
 	float2 texelPos = uvCoord * float2(SMAP_WIDTH, SMAP_HEIGHT);
 
+	float s = shadowMap[0].Sample(AnisoSampler, uvCoord).r;
+	return float4(s, s, s, 1);
 	// 
 	//float s0 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord).r);
 	//float s1 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
@@ -120,8 +125,8 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	//return float4(s0, s1, s2, s3);
 
 	//// Grid for seing shadowmap texels
-	//if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
-	//	return float4(0, 0.3, 0, 1);
+	if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
+		return float4(0, 0.3, 0, 1);
 
 	return clamp(float4(finalColor,1),0,1);
 }
