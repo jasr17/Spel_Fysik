@@ -20,6 +20,22 @@ Texture2D Textures[4]	: register(t0);
 Texture2D shadowMap[10] : register(t10);
 SamplerState AnisoSampler;
 
+//SSAO
+//-----------------------------------------------------//
+float randomSize;
+float sampleRad;
+float intensity;
+float scale;
+float bias;
+//Texture2D NoiceMap	: register();
+
+float DoAmbientOcclusion(in float2 texCoord, in float2 uv, in float3 p, in float3 normal)
+{
+	float3 diff = Textures[2].AnisoSampler();
+}
+
+//----------------------------------------------------//
+
 bool checkShadowMap(float4 pos, int shadowMapIndex)
 {
 	// Manually devides by w
@@ -40,12 +56,12 @@ struct PixelShaderInput {
 float4 PS_main(in PixelShaderInput input) : SV_TARGET
 {
 	float4 normal	= normalize(Textures[0].Sample(AnisoSampler, input.uv));
-	float4 albeno	= Textures[1].Sample(AnisoSampler, input.uv);
+	float4 color	= Textures[1].Sample(AnisoSampler, input.uv);
 	float4 position = Textures[2].Sample(AnisoSampler, input.uv);
     float4 specular = Textures[3].Sample(AnisoSampler, input.uv);
 
 	float3 ambient = float3(0.2, 0.2, 0.2);
-    float3 finalColor = albeno.xyz * ambient;
+    float3 finalColor = color.xyz * ambient;
 	for (int i = 0; i < lightCount.x; i++)
     {
         if (checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i))
@@ -68,7 +84,7 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
                 float specularStrength = pow(max(dot(reflekt, toCam), 0), specular.w);
 
 
-                finalColor += lightIntensity * (albeno.xyz * lightColor * diffuseStrength + albeno.xyz * specularStrength * specular.rgb) / pow(distToLight, 0);
+                finalColor += lightIntensity * (color.xyz * lightColor * diffuseStrength + color.xyz * specularStrength * specular.rgb) / pow(distToLight, 0);
             }
         }
     }
