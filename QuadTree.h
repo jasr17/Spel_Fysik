@@ -155,9 +155,12 @@ inline bool QuadTree::updateObj(const float3 centerPos, const float3 halfLength,
 	if (indexInArray != -1)
 	{
 		Obj oldObj = mObjects.get(indexInArray);
-		deleteObj(oldObj);
 		mObjects.set(indexInArray, newObj);
-		insert(newObj);
+		if (mNrOfPartitions != 0)
+		{
+			deleteObj(oldObj);
+			insert(newObj);
+		}
 	}
 	return indexInArray != -1;
 }
@@ -204,12 +207,6 @@ inline void QuadTree::createChildren()
 	float3 newHalfSizes = mBoundingBox.mHalfLength;
 	newHalfSizes.x /= 2;
 	newHalfSizes.z /= 2;	
-
-	//mChildren[0] = new QuadTree(AABB(mBoundingBox.mCenterPos + newHalfSizes * float3(-1, 0,  1), newHalfSizes), mNrOfPartitions - 1);   //North West
-	//mChildren[1] = new QuadTree(AABB(mBoundingBox.mCenterPos + newHalfSizes * float3( 1, 0,  1), newHalfSizes), mNrOfPartitions - 1);   //North East
-	//mChildren[2] = new QuadTree(AABB(mBoundingBox.mCenterPos + newHalfSizes * float3(-1, 0, -1), newHalfSizes), mNrOfPartitions - 1);   //South West
-	//mChildren[3] = new QuadTree(AABB(mBoundingBox.mCenterPos + newHalfSizes * float3( 1, 0, -1), newHalfSizes), mNrOfPartitions - 1);   //South East
-	// Tror den nedan är mer lättläst?
 	  
 	float3 direction[4] = { float3(-1, 0, 1), float3(1, 0, 1) ,float3(-1, 0, -1), float3(1, 0, -1) };
 	for (int i = 0; i < 4; i++) 
@@ -222,9 +219,9 @@ inline int QuadTree::intersectsFrustum(Frustum frustum)
 	// returns 0: outside, 1: intersects and 2: contained
 	
 	int returnValue = 2;
-	float similarity;
-	float newSimilarity;
-	int mostSimilarDiagonal;
+	float similarity = 0;
+	float newSimilarity = 0;
+	int mostSimilarDiagonal = -1;
 	for (int iPlane = 0; iPlane < 6 && returnValue > 0; iPlane++)
 	{
 		similarity = 0;
@@ -232,7 +229,7 @@ inline int QuadTree::intersectsFrustum(Frustum frustum)
 		mostSimilarDiagonal = -1;
 		for (int iDiagonal = 0; iDiagonal < 4; iDiagonal++)
 		{
-			newSimilarity = abs(frustum.getPlanes()[iPlane].mNormal.Dot(mDiagonals[iDiagonal]));
+			newSimilarity = abs(frustum.getPlane(iPlane).mNormal.Dot(mDiagonals[iDiagonal]));
 			if (newSimilarity > similarity)
 			{
 				similarity = newSimilarity;
@@ -242,10 +239,9 @@ inline int QuadTree::intersectsFrustum(Frustum frustum)
 
 		// Distance taken from the length of a vector (from the plane to a point) projected onto the plane normal.
 		// Think the projection formula but without the resulting vector.
-		// The normals are normalized.
 		// Normals point inwards. 
-		float p = (mPoints[mostSimilarDiagonal * 2] - frustum.getPlanes()[iPlane].mPoint).Dot(frustum.getPlanes()[iPlane].mNormal);
-		float n = (mPoints[mostSimilarDiagonal * 2 + 1] - frustum.getPlanes()[iPlane].mPoint).Dot(frustum.getPlanes()[iPlane].mNormal);
+		float p = (mPoints[mostSimilarDiagonal * 2] - frustum.getPlane(iPlane).mPoint).Dot(frustum.getPlane(iPlane).mNormal);
+		float n = (mPoints[mostSimilarDiagonal * 2 + 1] - frustum.getPlane(iPlane).mPoint).Dot(frustum.getPlane(iPlane).mNormal);
 
 		if (p < n)
 		{
@@ -264,9 +260,6 @@ inline int QuadTree::intersectsFrustum(Frustum frustum)
 
 inline void QuadTree::getContent(Array<int>& indexArray)
 {
-	int nr = indexArray.length();
-
-	bool isInArray = false;
 	for (int i = 0; i < mObjects.length(); i++)
 	{
 		if (indexArray.find(mObjects[i].mIndex) == -1)
@@ -274,7 +267,6 @@ inline void QuadTree::getContent(Array<int>& indexArray)
 			indexArray.add(mObjects[i].mIndex);
 		}
 	}
-
 }
 
 inline void QuadTree::getAllContentFromLeaves(Array<int>& indexArray)
@@ -295,18 +287,6 @@ inline void QuadTree::getAllContentFromLeaves(Array<int>& indexArray)
 inline void QuadTree::setUpPointsAndDiagonals()
 {
 	//index 2n and 2n+1 is a pair
-	
-	//points[0] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength;
-	//points[1] = mBoundingBox.mCenterPos - mBoundingBox.mHalfLength;
-	//
-	//points[2] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * float3(-1, -1,  1);
-	//points[3] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * float3( 1,  1, -1);
-	//
-	//points[4] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * float3(-1,  1, -1);
-	//points[5] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * float3( 1, -1,  1);
-	//
-	//points[6] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * float3( 1, -1, -1);
-	//points[7] = mBoundingBox.mCenterPos + mBoundingBox.mHalfLength * float3(-1,  1,  1);
 
 	float3 direction[4] = { float3(1, 1, 1), float3(-1, 1, 1) ,float3(1, -1, 1), float3(1, 1, -1) };
 	for (int i = 0; i < 4; i++)

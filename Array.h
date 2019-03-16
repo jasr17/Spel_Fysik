@@ -212,7 +212,8 @@ inline void Array<T>::set(int index, const T & item)
 template<typename T>
 inline void Array<T>::quickSort()
 {
-	quickSortSub(0,size-1);
+	if(size > 0)
+		quickSortSub(0,size-1);
 }
 
 template<typename T>

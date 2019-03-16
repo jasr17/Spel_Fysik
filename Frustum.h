@@ -17,7 +17,7 @@ public:
 
 	Frustum();
 	~Frustum();
-	 const FrustumPlane* getPlanes() ;
+	 const FrustumPlane& getPlane(int index) ;
 	void constructFrustum(float3 camPos, float3 camDir, float3 up, float fowAngle, float aspectRatio, float nearZ, float farZ);
 };
 
@@ -31,9 +31,9 @@ Frustum::~Frustum()
 {
 }
 
-inline const Frustum::FrustumPlane * Frustum::getPlanes() 
+inline const Frustum::FrustumPlane & Frustum::getPlane(int index) 
 {
-	return mPlanes;
+	return mPlanes[index];
 }
 
 inline void Frustum::constructFrustum(float3 camPos, float3 camDir, float3 up, float fowAngle, float aspectRatio, float nearZ, float farZ)

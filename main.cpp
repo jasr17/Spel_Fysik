@@ -102,7 +102,7 @@ struct ViewData {
 	}
 }viewData;
 
-QuadTree gQuadTree(float3(0, 0, 0), float3(10, 10, 10), 3);
+QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 3);
 Array<int> gIndexArray;  // Visible objects
 
 void SetViewport()
@@ -150,7 +150,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = true;
+	bool povPlayer = false;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -269,10 +269,10 @@ void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle
 	float3 pointLeftBottomFar = middleFar + vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
 	float3 pointRightBottomFar = middleFar - vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
 
-	//float3 pointLeftUpNear =		middleNear + vectorLeft * halfWidthNear - vectorDown * halfHeightNear;
-	//float3 pointRightUpNear =		middleNear - vectorLeft * halfWidthNear - vectorDown * halfHeightNear;
-	//float3 pointLeftBottomNear =	middleNear + vectorLeft * halfWidthNear + vectorDown * halfHeightNear;
-	//float3 pointRightBottomNear =	middleNear - vectorLeft * halfWidthNear + vectorDown * halfHeightNear;
+	float3 pointLeftUpNear =		middleNear + vectorLeft * halfWidthNear - vectorDown * halfHeightNear;
+	float3 pointRightUpNear =		middleNear - vectorLeft * halfWidthNear - vectorDown * halfHeightNear;
+	float3 pointLeftBottomNear =	middleNear + vectorLeft * halfWidthNear + vectorDown * halfHeightNear;
+	float3 pointRightBottomNear =	middleNear - vectorLeft * halfWidthNear + vectorDown * halfHeightNear;
 	
 
 
@@ -283,10 +283,10 @@ void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle
 	objects[3].setPosition(pointLeftBottomFar);
 	objects[4].setPosition(pointRightBottomFar);
 
-	//objects[5].setPosition(pointLeftUpNear);
-	//objects[6].setPosition(pointRightUpNear);
-	//objects[7].setPosition(pointLeftBottomNear);
-	//objects[8].setPosition(pointRightBottomNear);
+	objects[5].setPosition(pointLeftUpNear);
+	objects[6].setPosition(pointRightUpNear);
+	objects[7].setPosition(pointLeftBottomNear);
+	objects[8].setPosition(pointRightBottomNear);
 
 
 }
@@ -393,12 +393,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		objects.appendCapacity(1000);
 
 		// Frustum cubes to more easily see the frustum
-		//for (int i = 0; i < 5; i++)
+		//for (int i = 0; i < 9; i++)
 		//{
 		//	Object frustumCube;
 		//	frustumCube.setScale(float3(0.2,0.2,0.2));
-		//	//if(i == 0) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0);
-		//	//else if(i>4) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0.1);
+		//	if(i == 0) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0);
+		//	else if(i>4) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0.1);
 		//	
 		//	frustumCube.giveMesh(&meshes[2]);
 		//	objects.add(frustumCube);
@@ -447,7 +447,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			objects.add(pineTree);
 		}
 		//House
-		//objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
+		objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
 
 		sphere.giveMesh(&meshes[1]);
 		cube.giveMesh(&meshes[2]);
