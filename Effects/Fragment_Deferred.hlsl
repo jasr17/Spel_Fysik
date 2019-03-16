@@ -22,17 +22,24 @@ SamplerState AnisoSampler;
 
 //SSAO
 //-----------------------------------------------------//
-float randomSize;
-float sampleRad;
-float intensity;
-float scale;
-float bias;
-//Texture2D NoiceMap	: register();
+//Texture2D NoiseMap :register ();
+//Först hitta pixelns position i viewspace och dess normal (textures 0 och 2).
 
-float DoAmbientOcclusion(in float2 texCoord, in float2 uv, in float3 p, in float3 normal)
+float occlusion()
 {
-	float3 diff = Textures[2].AnisoSampler();
+	float occlusion = 0.0;
+	/*
+	for(int i = 0; i < kernelSize;i++){
+
+	*/
 }
+//-------------
+//Rotation functions
+float3 getRandVec() 
+{
+	return camPos *
+}
+
 
 //----------------------------------------------------//
 
@@ -59,6 +66,15 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	float4 color	= Textures[1].Sample(AnisoSampler, input.uv);
 	float4 position = Textures[2].Sample(AnisoSampler, input.uv);
     float4 specular = Textures[3].Sample(AnisoSampler, input.uv);
+
+	//-------------------------------------
+	//SSAO
+	//------------------------------------
+	//To calculate the occlusion we need the pixels location in viewSpace
+	float3 origin;
+
+	//---------------------------------------
+
 
 	float3 ambient = float3(0.2, 0.2, 0.2);
     float3 finalColor = color.xyz * ambient;

@@ -14,6 +14,7 @@
 #include "Terrain.h"
 #include "LightManager.h"
 #include "Deferred.h"
+#include "SSAO.h"
 #include "TextureBlurrer.h"
 
 const int DEF_BUFFERCOUNT = 3;
@@ -77,10 +78,12 @@ ShaderSet shader_object;
 ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 ShaderSet gShader_Deferred;
+ShaderSet gShader_SSAO;
 
 ////Deffered shading
 
 Deferred gDeferred;
+SSAO AO;
 
 //GaussianBlurring
 TextureBlurrer textureBlurrer;
@@ -327,6 +330,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_Terrain.hlsl");
 		gShader_Deferred.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_Deferred.hlsl");
+		//gShader_SSAO.createShaders(L"Effects/Vertex_Noise.hlsl", nullptr, L"Effects/Fragment_Noise.hlsl");
 		gDeferred.setShaderSet(gShader_Deferred);
 		ShowWindow(wndHandle, nCmdShow);
 
