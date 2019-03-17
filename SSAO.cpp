@@ -31,7 +31,7 @@ void SSAO::generateKernelsAndNoise()
 {
 	for (int i = 0; i < KERNELSIZE; i++) 
 	{
-		kernels[i] = float3(random(-1, 1), random(-1, 1), random(0, 1)); //Z will never be negative.
+		kernels[i] = float4(random(-1, 1), random(-1, 1), random(0, 1), 0); //Z will never be negative.
 		kernels[i].Normalize();
 
 		float scale = float(i) / float(KERNELSIZE);
@@ -97,18 +97,18 @@ void SSAO::createConstantBuffer()
 	d.ByteWidth = sizeof(kernelConstantBuffer);
 
 	kernelConstantBuffer cBuf;
-	cBuf.nrOfKernels = KERNELSIZE;
+	cBuf.nrOfKernels.x = KERNELSIZE;
 	for (int i = 0; i < KERNELSIZE; i++)
 	{
-		cBuf.kernels[i] = kernels[i];
+		cBuf.kernels[i] = float4(kernels[i]);
 	}
-	//D3D11_SUBRESOURCE_DATA data;
-	//ZeroMemory(&data, sizeof(data));
-	//data.pSysMem = &cBuf;
+	D3D11_SUBRESOURCE_DATA data;
+	ZeroMemory(&data, sizeof(data));
+	data.pSysMem = &cBuf;
 
-	gDevice->CreateBuffer(&d, nullptr, &cBuffer);
-	gDeviceContext->PSSetConstantBuffers(2, 1, &cBuffer);
+	gDevice->CreateBuffer(&d, &data, &cBuffer);
+	gDeviceContext->PSSetConstantBuffers(3, 1, &cBuffer);
 
-	gDeviceContext->UpdateSubresource(cBuffer, 0, 0, &cBuf, 0, 0);
+	//gDeviceContext->UpdateSubresource(cBuffer, 0, 0, &cBuf, 0, 0);
 }
 

@@ -14,7 +14,7 @@ public:
 private:
 	void generateKernelsAndNoise();
 	//Kernels will function as samplepoints in a hemisphere above a wanted pixel
-	float3 kernels[KERNELSIZE];
+	float4 kernels[KERNELSIZE];
 	//kernels will be rotated by a random value to lessen bandin effects.
 	float3 noise[NOISESIZE*NOISESIZE];
 
@@ -24,8 +24,8 @@ private:
 	ID3D11Buffer* cBuffer = nullptr;
 
 	struct kernelConstantBuffer {
-		float3 kernels[KERNELSIZE];
-		float nrOfKernels;
+		float4 kernels[KERNELSIZE];
+		float4 nrOfKernels;
 		
 	};
 

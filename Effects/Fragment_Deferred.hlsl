@@ -18,9 +18,10 @@ cbuffer cameraBuffer : register(b1)
 {
 	float4 camPos;
 }
-cbuffer kernelBuffer : register(b2) {
+cbuffer kernelBuffer : register(b3) 
+{
 	float4 kernels[8];
-	float nrOfKernels;
+	float4 nrOfKernels;
 }
 
 //Texturer/samplers
@@ -147,36 +148,17 @@ float4 PS_main(in PS_IN input) : SV_TARGET
             }
         }
     }
-
-	float4 pos = mul(position, lights[0].viewPerspectiveMatrix);
-	pos.xyz /= pos.w;
-	float depth = pos.z;
-
-
-	float2 dx = float2(1.0f / SMAP_WIDTH, 1.0f / SMAP_HEIGHT); // size of one texture sample
-	float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
-	float2 texelPos = uvCoord * float2(SMAP_WIDTH, SMAP_HEIGHT);
-
-	float s = shadowMap[0].Sample(AnisoSampler, uvCoord).r;
-	//return float4(s, s, s, 1);
-	// 
-	//float s0 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord).r);
-	//float s1 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
-	//float s2 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r);
-	//float s3 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r);
-	//return float4(s0, s1, s2, s3);
-
-	//// Grid for seing shadowmap texels
-	/*if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
-		return float4(0, 0.3, 0, 1);*/
-
+	
 	float4 test = float4(1, 1, 1, 1);
-	for (int i = 0; i < nrOfKernels; i++) {
-		test *= kernels[i];
+	for (int i = 0; i < nrOfKernels.x; i++) {
+		test.xyz *= kernels[i];
 	}
 
 	//return clamp(float4(finalColor,1),0,1);
 	//return viewPos;
 	//return abs(noise);
+	/*if (nrOfKernels.x == 0)
+		return float4(0, 0, 0, 1);*/
+
 	return test;
 }
