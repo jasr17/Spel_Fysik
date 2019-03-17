@@ -10,6 +10,8 @@ private:
 	void free();
 	void quickSortSub(int left, int right);
 public:
+	/*Returns the position/index of the item in the array. -1 if not found*/
+	int find(const T& item);
 	bool isMaxCapacity() const;
 	/*Returns total bytes reserved for array (itemBytes*size)*/
 	int byteSize() const;
@@ -55,6 +57,19 @@ inline void Array<T>::free()
 {
 	delete[] elements;
 	elements = nullptr;
+}
+
+template<typename T>
+inline int Array<T>::find(const T & item)
+{
+	int pos = -1;
+	for (int i = 0; i < size && pos == -1; i++)
+	{
+		if (elements[i] == item)
+			pos = i;
+	}
+
+	return pos;
 }
 
 template<typename T>
@@ -197,7 +212,8 @@ inline void Array<T>::set(int index, const T & item)
 template<typename T>
 inline void Array<T>::quickSort()
 {
-	quickSortSub(0,size-1);
+	if(size > 0)
+		quickSortSub(0,size-1);
 }
 
 template<typename T>

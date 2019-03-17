@@ -59,10 +59,19 @@
     <ClInclude Include="FullScreenQuad.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="QuadTree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Frustum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="TextureBlurrer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SSAO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FrontToBack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

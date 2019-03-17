@@ -15,7 +15,9 @@
 #include "LightManager.h"
 #include "Deferred.h"
 #include "SSAO.h"
+#include "QuadTree.h"
 #include "TextureBlurrer.h"
+#include "FrontToBack.h"
 
 const int DEF_BUFFERCOUNT = 3;
 
@@ -88,6 +90,24 @@ SSAO AO;
 //GaussianBlurring
 TextureBlurrer textureBlurrer;
 
+// Viewdata for use in setting view matrix and view frustum
+struct ViewData {
+	XMFLOAT3 up;
+	float fowAngle, aspectRatio, nearZ, farZ;
+
+	ViewData()
+	{
+		up = XMFLOAT3(0, 1, 0);
+		fowAngle = XM_PI * 0.45;
+		aspectRatio = (float)(Win_WIDTH) / (Win_HEIGHT);
+		nearZ = 0.01;
+		farZ = 50;
+	}
+}viewData;
+
+QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 3);
+Array<int> gIndexArray;  // Visible objects
+
 void SetViewport()
 {
 	D3D11_VIEWPORT vp;
@@ -131,10 +151,18 @@ void CreateCameraBuffer() {
 
 void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
 	XMFLOAT3 at = cameraPosition + cameraForward;
-	XMFLOAT3 up(0, 1, 0);
-	XMMATRIX view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up));
+	//XMFLOAT3 up(0, 1, 0);
 
-	XMMATRIX perspective = XMMatrixPerspectiveFovLH(XM_PI*0.45, (float)(Win_WIDTH) / (Win_HEIGHT), 0.01, 50);
+	bool povPlayer = false;
+	XMMATRIX view;
+	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
+	else
+	{
+		XMFLOAT3 camPos = float3(8, 10, 0);
+		at = float3(0, 0, 0);
+		view = XMMatrixLookAtLH(XMLoadFloat3(&camPos), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
+	}
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(viewData.fowAngle, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
 
 	WorldViewPerspectiveMatrix mat;
 	mat.mWorld = XMMatrixTranspose(worldMat);
@@ -184,16 +212,86 @@ void drawToShadowMap() {
 	for (int iLight = 0; iLight < lightManager.lightCount(); iLight++)
 	{
 		lightManager.setShadowMapForDrawing(iLight);
-		//objects
+		//objects		
 		for (int iObj = 0; iObj < objects.length(); iObj++)
 		{
 			lightManager.updateMatrixBuffer(objects[iObj].getWorldMatrix(), iLight);
 			objects[iObj].draw();
 		}
+
+		// If shadowmapping uses frustum culling there can be cases where the light is behind the player it might not show some shadows that should be there.
+		//for (int iObj = 0; iObj < gIndexArray.length(); iObj++)
+		//{
+		//	lightManager.updateMatrixBuffer(objects[gIndexArray[iObj]].getWorldMatrix(), iLight);
+		//	objects[gIndexArray[iObj]].draw();
+		//}
+
 		//terrain
 		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(), iLight);
 		terrain.draw();
 	}
+} 
+
+void checkFrustumQuadTreeIntersection()
+{
+	// See if any objecs has moved and needs to update
+	for (int i = 0; i < objects.length(); i++)
+	{
+		if (objects[i].popIfChanged())
+		{
+			gQuadTree.updateObj(objects[i].getBoundingBoxPos(), objects[i].getRotatedBoundingBoxSize(), i);
+		}
+	}
+
+	gIndexArray.reset();
+	Frustum frustum;
+	frustum.constructFrustum(cameraPosition, cameraForward, viewData.up, viewData.fowAngle, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
+	
+	gQuadTree.checkAgainstFrustum(gIndexArray, frustum);
+}
+
+void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle, float aspectRatio, float nearZ, float farZ)
+{
+	camDir.Normalize();
+	float3 middleFar = camPos + camDir * farZ;
+	float3 middleNear = camPos + camDir * nearZ;
+
+	float3 vectorLeft = camDir.Cross(up);
+	vectorLeft.Normalize();
+	float3 vectorDown = camDir.Cross(vectorLeft);
+	vectorDown.Normalize();
+
+	float halfHeightFar = farZ * tan(fowAngle / 2);
+	float halfWidthFar = halfHeightFar * aspectRatio;
+
+	float halfHeightNear = nearZ * tan(fowAngle / 2);
+	float halfWidthNear = halfHeightNear * aspectRatio;
+
+	float3 pointLeftUpFar = middleFar + vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
+	float3 pointRightUpFar = middleFar - vectorLeft * halfWidthFar - vectorDown * halfHeightFar;
+	float3 pointLeftBottomFar = middleFar + vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
+	float3 pointRightBottomFar = middleFar - vectorLeft * halfWidthFar + vectorDown * halfHeightFar;
+
+	float3 pointLeftUpNear =		middleNear + vectorLeft * halfWidthNear - vectorDown * halfHeightNear;
+	float3 pointRightUpNear =		middleNear - vectorLeft * halfWidthNear - vectorDown * halfHeightNear;
+	float3 pointLeftBottomNear =	middleNear + vectorLeft * halfWidthNear + vectorDown * halfHeightNear;
+	float3 pointRightBottomNear =	middleNear - vectorLeft * halfWidthNear + vectorDown * halfHeightNear;
+	
+
+
+	objects[0].setRotation(float3(cameraRotation.x,cameraRotation.y,0));
+	objects[0].setPosition(camPos);
+	objects[1].setPosition(pointLeftUpFar);
+	objects[2].setPosition(pointRightUpFar);
+	objects[3].setPosition(pointLeftBottomFar);
+	objects[4].setPosition(pointRightBottomFar);
+
+	objects[5].setPosition(pointLeftUpNear);
+	objects[6].setPosition(pointRightUpNear);
+	objects[7].setPosition(pointLeftBottomNear);
+	objects[8].setPosition(pointRightBottomNear);
+
+
 }
 
 void Render() {
@@ -205,14 +303,27 @@ void Render() {
 	float clearColor[] = { darkBlue.x,darkBlue.y,darkBlue.z, 1 };
 	//bind and clear renderTargets(color,normal,position,specular maps)
 	gDeferred.BindFirstPass(gDeviceContext,gDepthStencilView);
+	
+	// Front to back culling. Only consider those in frustum
+	// Can be tested by not rendering the first or last few objects
+	FrontToBack frontToBack;
+	float distance = 0;
+	for (int i = 0; i < gIndexArray.length(); i++)
+	{
+		distance = ( cameraPosition - objects[gIndexArray[i]].getPosition() ).Length();
+		frontToBack.insert(distance, gIndexArray[i]);
+	}
+	Array<int> sortedIndexArray = frontToBack.getSortedIndexArray();
+	
 				//DRAW
 	//objects
-	shader_object.bindShadersAndLayout();
-	for (int i = 0; i < objects.length(); i++)
+	shader_object.bindShadersAndLayout();	
+	for (int i = 0; i < sortedIndexArray.length(); i++)
 	{
-		updateMatrixBuffer(objects[i].getWorldMatrix());
-		objects[i].draw();
+		updateMatrixBuffer(objects[sortedIndexArray[i]].getWorldMatrix());
+		objects[sortedIndexArray[i]].draw();
 	}
+
 	//lights
 	shader_object_onlyMesh.bindShadersAndLayout();
 	for (int i = 0; i < lightManager.lightCount(); i++)
@@ -281,7 +392,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		float3 s = terrain.getTerrainSize();
 		float3 scale(0.05,0.05,0.05);
+		scale *= 2;
 		objects.appendCapacity(1000);
+
+		// Frustum cubes to more easily see the frustum
+		//for (int i = 0; i < 9; i++)
+		//{
+		//	Object frustumCube;
+		//	frustumCube.setScale(float3(0.2,0.2,0.2));
+		//	if(i == 0) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0);
+		//	else if(i>4) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0.1);
+		//	
+		//	frustumCube.giveMesh(&meshes[2]);
+		//	objects.add(frustumCube);
+		//}
+
+		
+		int nrOfItemsToAdd = 100;
+
 		for (int i = 0; i < 0; i++)
 		{
 			Object swd = Object(
@@ -291,17 +419,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				&meshes[0]);
 			objects.add(swd);
 		}
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object tree = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
-				float3(0, 0, 0),
+				float3(0, random(0, 3.14 * 2), 0),
 				scale,
 				&meshes[3]
 			);
 			objects.add(tree);
 		}
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object rock = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
@@ -311,7 +439,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			);
 			objects.add(rock);
 		}
-		for (int i = 0; i < 100; i++)
+		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object pineTree = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
@@ -321,6 +449,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			);
 			objects.add(pineTree);
 		}
+		//House
 		objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
 
 		sphere.giveMesh(&meshes[1]);
@@ -333,6 +462,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		//gShader_SSAO.createShaders(L"Effects/Vertex_Noise.hlsl", nullptr, L"Effects/Fragment_Noise.hlsl");
 		gDeferred.setShaderSet(gShader_Deferred);
 		ShowWindow(wndHandle, nCmdShow);
+
+		// Inserts objects in quadtree and partitions it.
+		for (int i = 0; i < objects.length(); i++)
+		{
+			gQuadTree.insertToRoot(objects[i].getBoundingBoxPos(), objects[i].getRotatedBoundingBoxSize(), i);
+		}
+
 
 		clock_t time;
 		while (WM_QUIT != msg.message)
@@ -431,12 +567,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 				else grounded = false;
 
+				//frustum balls
+				//updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
 				//rotate
 				rotation += deltaTime * XM_2PI*0.25*(1.0f / 4);
 				//update cameradata buffer
 				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x, cameraPosition.y, cameraPosition.z, 1);
 				gDeviceContext->UpdateSubresource(gCameraBuffer, 0, 0, &cpD, 0, 0);
 
+				//Frustum cull
+				checkFrustumQuadTreeIntersection();
 				//draw shadow maps
 				drawToShadowMap();
 				//draw deferred maps
