@@ -18,17 +18,27 @@ cbuffer cameraBuffer : register(b1)
 {
 	float4 camPos;
 }
+cbuffer kernelBuffer : register(b2) {
+	float nrOfKernels;
+	float4 kernels[10];
+}
 
 //Texturer/samplers
-Texture2D Textures[4]	: register(t0);
+Texture2D Textures[5]	: register(t0);
+Texture2D Noise			: register(t5);
 Texture2D shadowMap[10] : register(t10);
 SamplerState AnisoSampler;
 
 //SSAO
 //-----------------------------------------------------//
 //Texture2D NoiseMap :register ();
-//Först hitta pixelns position i viewspace och dess normal (textures 0 och 2).
+//Först hitta pixelns position i viewspace och dess normal (textures2).
 
+float3x3 SSAO_TBN(in float3 randomVector, in float3 normal) {
+	float3 tangent = normalize(randomVector - normal * dot(randomVector, normal));
+	float3 bitangent = cross(normal, tangent);
+	return float3x3(tangent, bitangent, normal);
+}
 float occlusion()
 {
 	float occlusion = 0.0;
@@ -39,15 +49,12 @@ float occlusion()
 }
 //-------------
 //Rotation functions
-float3 getRandVec() 
-{
-	return camPos *
-}
+
 
 
 //----------------------------------------------------//
 
-bool checkShadowMap(float4 pos, int shadowMapIndex)
+
 float checkShadowMap(float4 pos, int shadowMapIndex)
 {
 	// Manually devides by w
@@ -80,18 +87,26 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	return shadowCoeff;
 }
 
-struct PixelShaderInput {
+struct PS_IN {
 	float4 Pos	    : SV_Position;
 	float2 uv		: TEXCOORDS;
 };
 
 //G-bufferns pixelshader
-float4 PS_main(in PixelShaderInput input) : SV_TARGET
+float4 PS_main(in PS_IN input) : SV_TARGET
 {
 	float4 normal	= normalize(Textures[0].Sample(AnisoSampler, input.uv));
 	float4 color	= Textures[1].Sample(AnisoSampler, input.uv);
 	float4 position = Textures[2].Sample(AnisoSampler, input.uv);
     float4 specular = Textures[3].Sample(AnisoSampler, input.uv);
+	float4 viewPos	= Textures[4].Sample(AnisoSampler, input.uv);
+	float4 randomVec = Noise.Sample(AnisoSampler, input.uv);
+	
+	
+	//OM KONSTIG BILD; BYT PLATS PÅ VIEWPOS OCH SSAO_TBN
+	float3 TBNVec = mul(viewPos.xyz, SSAO_TBN(normalize(float3(1, 1, 1))/*randomVector*/, normal));
+
+
 
 	//-------------------------------------
 	//SSAO
@@ -128,7 +143,7 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
                 float specularStrength = pow(max(dot(reflekt, toCam), 0), specular.w);
 
 				
-				finalColor += (lightIntensity * (color.xyz * lightColor * diffuseStrength * shadowCoeff + albeno.xyz * specularStrength * specular.rgb) / pow(distToLight, 0));
+				finalColor += (lightIntensity * (color.xyz * lightColor * diffuseStrength * shadowCoeff + color.xyz * specularStrength * specular.rgb) / pow(distToLight, 0));
             }
         }
     }
@@ -156,4 +171,6 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 		return float4(0, 0.3, 0, 1);*/
 
 	return clamp(float4(finalColor,1),0,1);
+	//return viewPos;
+	//return abs(noise);
 }

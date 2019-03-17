@@ -14,7 +14,6 @@
 #include "Terrain.h"
 #include "LightManager.h"
 #include "Deferred.h"
-#include "SSAO.h"
 #include "QuadTree.h"
 #include "TextureBlurrer.h"
 #include "FrontToBack.h"
@@ -41,7 +40,7 @@ float2 mousePos;
 Mouse::ButtonStateTracker mouseTracker;
 //world data
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective;
+	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective, mWorldViewMatrix;
 };
 //player variables
 bool grounded = false;
@@ -80,7 +79,6 @@ ShaderSet shader_object;
 ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 ShaderSet gShader_Deferred;
-ShaderSet gShader_SSAO;
 
 ////Deffered shading
 
@@ -153,7 +151,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = false;
+	bool povPlayer = true;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -168,6 +166,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	mat.mWorld = XMMatrixTranspose(worldMat);
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
 	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, view), perspective));
+	mat.mWorldViewMatrix = XMMatrixTranspose(XMMatrixMultiply(worldMat, view));
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }

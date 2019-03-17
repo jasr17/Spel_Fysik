@@ -71,60 +71,15 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 		// Create the shader resource views.
 		for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++)
 		{
-			result =device->CreateShaderResourceView(gBuffer[i].texture, &shaderResourceViewDesc, &gBuffer[i].shaderResourceView);
+			result = device->CreateShaderResourceView(gBuffer[i].texture, &shaderResourceViewDesc, &gBuffer[i].shaderResourceView);
 			if (FAILED(result))
 			{
 				return false;
 			}
 		}
 
-		//// Initialize the description of the depth buffer.
-		//D3D11_TEXTURE2D_DESC depthBufferDesc;
-		//ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-
-		//// Set up the description of the depth buffer.
-		//depthBufferDesc.Width = Win_WIDTH;
-		//depthBufferDesc.Height = Win_HEIGHT;
-		//depthBufferDesc.MipLevels = 1;
-		//depthBufferDesc.ArraySize = 1;
-		//depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		//depthBufferDesc.SampleDesc.Count = 1;
-		//depthBufferDesc.SampleDesc.Quality = 0;
-		//depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		//depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		//depthBufferDesc.CPUAccessFlags = 0;
-		//depthBufferDesc.MiscFlags = 0;
-
-		//// Create the texture for the depth buffer using the filled out description.
-		//result = gDevice->CreateTexture2D(&depthBufferDesc, NULL, &m_depthStencilBuffer);
-		//if (FAILED(result))
-		//{
-		//	return false;
-		//}
-
-		//// Initailze the depth stencil view description.
-		//ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-
-		//// Set up the depth stencil view description.
-		//D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-		//depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		//depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		//depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-		//// Create the depth stencil view.
-		//result = device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-		//if (FAILED(result))
-		//{
-		//	return false;
-		//}
-
-		//// Setup the viewport for rendering.
-		//m_viewport.Width = (float)textureWidth;
-		//m_viewport.Height = (float)textureHeight;
-		//m_viewport.MinDepth = 0.0f;
-		//m_viewport.MaxDepth = 1.0f;
-		//m_viewport.TopLeftX = 0.0f;
-		//m_viewport.TopLeftY = 0.0f;
+		//Create SSAO noise texture.
+		ao.createNosieTexture();
 
 		return true;
 }
@@ -179,7 +134,7 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	
 
-	context->PSGetConstantBuffers(1, 1, &cameraBuffer);
+	//context->PSGetConstantBuffers(1, 1, &cameraBuffer);
 
 	ID3D11ShaderResourceView* srvArray[DEFERRED_BUFFERCOUNT];
 	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
@@ -187,6 +142,8 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 	}
 
 	context->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
+	//en kommentar
+	ao.setNoise();
 
 	context->Draw(4, 0);
 }

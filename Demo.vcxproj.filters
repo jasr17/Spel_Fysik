@@ -106,8 +106,5 @@
     <FxCompile Include="GaussianVerticalBlur.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
-    <FxCompile Include="Vertex_Noise.hlsl">
-      <Filter>Effects</Filter>
-    </FxCompile>
   </ItemGroup>
 </Project>

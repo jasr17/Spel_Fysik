@@ -1,5 +1,6 @@
 #pragma once
 #include"FullScreenQuad.h"
+#include "SSAO.h"
 struct RenderTargets {
 	ID3D11RenderTargetView		*renderTargetView = nullptr;
 	ID3D11Texture2D				*texture = nullptr;
@@ -15,6 +16,7 @@ private:
 	FullScreenQuad FSQ;
 	bool CreateGBuffer(ID3D11Device* device);
 	ShaderSet *shaderSet;
+	SSAO ao;
 public:
 	Deferred();
 	void initDeferred(ID3D11Device* device);
