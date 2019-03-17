@@ -19,8 +19,8 @@ cbuffer cameraBuffer : register(b1)
 	float4 camPos;
 }
 cbuffer kernelBuffer : register(b2) {
+	float4 kernels[8];
 	float nrOfKernels;
-	float4 kernels[10];
 }
 
 //Texturer/samplers
@@ -170,7 +170,13 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 	/*if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
 		return float4(0, 0.3, 0, 1);*/
 
-	return clamp(float4(finalColor,1),0,1);
+	float4 test = float4(1, 1, 1, 1);
+	for (int i = 0; i < nrOfKernels; i++) {
+		test *= kernels[i];
+	}
+
+	//return clamp(float4(finalColor,1),0,1);
 	//return viewPos;
 	//return abs(noise);
+	return test;
 }

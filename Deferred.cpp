@@ -79,7 +79,9 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 		}
 
 		//Create SSAO noise texture.
+		ao.createConstantBuffer();
 		ao.createNosieTexture();
+		ao.setNoise();
 
 		return true;
 }
@@ -143,7 +145,7 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 
 	context->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
 	//en kommentar
-	ao.setNoise();
+	
 
 	context->Draw(4, 0);
 }

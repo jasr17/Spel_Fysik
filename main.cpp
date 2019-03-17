@@ -83,7 +83,6 @@ ShaderSet gShader_Deferred;
 ////Deffered shading
 
 Deferred gDeferred;
-SSAO AO;
 
 //GaussianBlurring
 TextureBlurrer textureBlurrer;

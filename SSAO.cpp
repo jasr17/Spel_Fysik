@@ -86,16 +86,29 @@ void SSAO::setNoise()
 	gDeviceContext->PSSetShaderResources(SSAO_TEXTURE_SLOT, 1, &noiseShader);
 }
 
-void SSAO::setConstantBuffer()
+void SSAO::createConstantBuffer()
 {
 	D3D11_BUFFER_DESC d;
-	ZeroMemory(&d, sizeof(d));
+	memset(&d, 0, sizeof(d));
 
 	d.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
 	d.Usage = D3D11_USAGE_DEFAULT;
 	d.ByteWidth = sizeof(kernelConstantBuffer);
 
+	kernelConstantBuffer cBuf;
+	cBuf.nrOfKernels = KERNELSIZE;
+	for (int i = 0; i < KERNELSIZE; i++)
+	{
+		cBuf.kernels[i] = kernels[i];
+	}
+	//D3D11_SUBRESOURCE_DATA data;
+	//ZeroMemory(&data, sizeof(data));
+	//data.pSysMem = &cBuf;
+
 	gDevice->CreateBuffer(&d, nullptr, &cBuffer);
 	gDeviceContext->PSSetConstantBuffers(2, 1, &cBuffer);
+
+	gDeviceContext->UpdateSubresource(cBuffer, 0, 0, &cBuf, 0, 0);
 }
+
