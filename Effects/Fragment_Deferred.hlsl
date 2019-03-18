@@ -56,25 +56,30 @@ float3 getOrigin(in float z) {
 float occlusion(in float3x3 tbn,in float4 viewPos)
 {
 	float occlusion = 0.0;
+	float visibility = 0.0f;
 	float4 view = viewPos;
 	float check;
 	for (int i = 0; i < nrOfKernels.x; i++) {
-		view = float4(viewPos.xyz + mul(tbn, kernels[i]), 1);
+
+		// Vi tror att basbytet för kernel inte gjordes helt korrekt.
+
+		view = float4(viewPos.xyz + mul(kernels[i], tbn) * 0.1, 1);
+		//view = float4(viewPos.xyz + kernels[i] * 0.1, 1);
 
 		view = mul(view, mProjectionMatrix);
-		view /= view.w;
+		view.xy /= view.w;
 
 		float2 uvCoord = float2(0.5f * view.x + 0.5f, -0.5f * view.y + 0.5f);
-		float s0 = Textures[4].Sample(AnisoSampler, uvCoord).z;
+		float realDepth = Textures[4].Sample(AnisoSampler, uvCoord).z;
 
 		//rangeCheck
-		 check = abs(view.z - s0) < 1 ? 1.0 : 0.0;
+		check = abs(view.z - realDepth) < 0.05 ? 1.0 : 0.0;
 		check = 1;
-		
-		occlusion += (view.z < s0 ? 1.0 : 0.0) * check;
+		visibility += (view.z < (realDepth + 0.04) ? 1.0 : 0.0) * check;
 	}
-
-	occlusion = 1 - (occlusion / nrOfKernels.x);
+	
+	occlusion = 1 - (visibility / nrOfKernels.x);
+	return (visibility / nrOfKernels.x);
 	return occlusion;
 }
 
@@ -130,7 +135,7 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 	
 	//OM KONSTIG BILD; BYT PLATS PÅ VIEWPOS OCH SSAO_TBN
 	//float3x3 TBN = SSAO_TBN(normalize(randomVec), normal);				//	mul(normal.xyz, SSAO_TBN(normalize(randomVec), normal));
-	float3x3 TBN = SSAO_TBN(normalize(float4(1,1,1,1)), normal);
+	float3x3 TBN = SSAO_TBN(normalize(float4(1,1,1,0)), normal);
 
 	//return float4(viewPos.z, viewPos.z, viewPos.z,1);
 
@@ -143,7 +148,7 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 	//---------------------------------------
 	float o = occlusion(TBN, viewPos);
 	return float4(o, o, o, 1);
-	float3 ambient = float3(0.2, 0.2, 0.2) * (occlusion(TBN, viewPos));
+	float3 ambient = float3(0.2, 0.2, 0.2) * (1 - occlusion(TBN, viewPos));
     float3 finalColor = color.xyz * ambient;
 	for (int i = 0; i < lightCount.x; i++)
     {
