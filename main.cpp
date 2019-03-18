@@ -105,11 +105,23 @@ struct ViewData {
 QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 3);
 Array<int> gIndexArray;  // Visible objects
 
-void SetViewport()
+void SetViewport(float width, float height)
 {
 	D3D11_VIEWPORT vp;
-	vp.Width = (float)Win_WIDTH;
-	vp.Height = (float)Win_HEIGHT;
+	vp.Width = width;
+	vp.Height = height;
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	vp.TopLeftX = 0;
+	vp.TopLeftY = 0;
+	gDeviceContext->RSSetViewports(1, &vp);
+}
+
+void SetViewportSM()
+{
+	D3D11_VIEWPORT vp;
+	vp.Width = (float)SMAP_WIDTH;
+	vp.Height = (float)SMAP_HEIGHT;
 	vp.MinDepth = 0.0f;
 	vp.MaxDepth = 1.0f;
 	vp.TopLeftX = 0;
@@ -150,7 +162,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = false;
+	bool povPlayer = true;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -229,16 +241,23 @@ void drawToShadowMap() {
 	}
 } 
 
-void checkFrustumQuadTreeIntersection()
+bool updateChangedObjects()
 {
+	bool somethingHasChanged = false;
 	// See if any objecs has moved and needs to update
 	for (int i = 0; i < objects.length(); i++)
 	{
 		if (objects[i].popIfChanged())
 		{
 			gQuadTree.updateObj(objects[i].getBoundingBoxPos(), objects[i].getRotatedBoundingBoxSize(), i);
+			somethingHasChanged = true;
 		}
 	}
+	return somethingHasChanged;
+}
+
+void checkFrustumQuadTreeIntersection()
+{
 
 	gIndexArray.reset();
 	Frustum frustum;
@@ -287,8 +306,6 @@ void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle
 	objects[6].setPosition(pointRightUpNear);
 	objects[7].setPosition(pointLeftBottomNear);
 	objects[8].setPosition(pointRightBottomNear);
-
-
 }
 
 void Render() {
@@ -361,7 +378,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		CreateDirect3DContext(wndHandle); //2. Skapa och koppla SwapChain, Device och Device Context
 		gDeferred.initDeferred(gDevice);
-		SetViewport(); //3. Sätt viewport
+		SetViewport(Win_WIDTH, Win_HEIGHT); //3. Sätt viewport
 
 		CreateCameraBuffer();
 
@@ -373,6 +390,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
+		lightManager.addLight(float3(-7, 10, 7), float3(1, 0.9, 0.7), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50);
 		lightManager.createBuffers();
 
 		terrain.create(XMINT2(500, 500), 15, 5, L"Images/heightMap2.png", smoothShading);
@@ -465,6 +483,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			gQuadTree.insertToRoot(objects[i].getBoundingBoxPos(), objects[i].getRotatedBoundingBoxSize(), i);
 		}
 
+		// Initial rendering of shadowmap. 
+		SetViewport(SMAP_WIDTH, SMAP_HEIGHT);
+		drawToShadowMap();
 
 		clock_t time;
 		while (WM_QUIT != msg.message)
@@ -571,11 +592,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x, cameraPosition.y, cameraPosition.z, 1);
 				gDeviceContext->UpdateSubresource(gCameraBuffer, 0, 0, &cpD, 0, 0);
 
+				bool someObjectHasChanged = updateChangedObjects();
 				//Frustum cull
 				checkFrustumQuadTreeIntersection();
 				//draw shadow maps
-				drawToShadowMap();
+				if (someObjectHasChanged)
+				{
+					SetViewport(SMAP_WIDTH, SMAP_HEIGHT);
+					drawToShadowMap();
+				}
 				//draw deferred maps
+				SetViewport(Win_WIDTH, Win_HEIGHT);
 				Render();
 				//draw deferred maps to full quad
 				gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);

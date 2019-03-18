@@ -1,7 +1,5 @@
 // Konstanter
-#define SHADOW_EPSILON 0.00001
-#define SMAP_WIDTH  (1080 * 0.9)
-#define SMAP_HEIGHT (1920 * 0.9)
+#define SHADOW_EPSILON (0.00001)
 
 struct ShaderLight
 {
@@ -13,6 +11,7 @@ cbuffer lightBuffer : register(b0)
 {
 	float4 lightCount;
 	ShaderLight lights[10];
+	float4 smapSize;  // 
 };
 cbuffer cameraBuffer : register(b1)
 {
@@ -32,8 +31,8 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	// sets coordinates from a [-1, 1] range to [0, 1]. Flips y since directx 0 starts on top
 	float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
 
-	float2 mapSize = float2(SMAP_WIDTH, SMAP_HEIGHT);
-	float2 dx = float2(1.0f / SMAP_WIDTH, 1.0f / SMAP_HEIGHT); // size of one texture sample
+	float2 mapSize = float2(smapSize.x, smapSize.y);
+	float2 dx = float2(1.0f / smapSize.x, 1.0f / smapSize.y); // size of one texture sample
 	
 	float2 texelPos = uvCoord * mapSize; 
 	float2 lerps = frac(texelPos); // Posision on the texel. Used in linear interpolation to judge weight of contributon
@@ -49,10 +48,12 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 
 	// Interpolates the result of the sampling
 	float shadowCoeff = lerp( lerp(s0, s1, lerps.x), lerp(s2, s3, lerps.x), lerps.y);
+	//float shadowCoeff = lerp(lerp(s3, s2, lerps.x), lerp(s1, s0, lerps.x), lerps.y);
 	
 	// Very blocky version
 	//shadowCoeff = (s0 + s1 + s2 + s3) / 4;
-
+	//shadowCoeff = lerp(s0, s1, lerps.x);
+	
 	return shadowCoeff;
 }
 
@@ -105,22 +106,24 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
 	float depth = pos.z;
 
 
-	float2 dx = float2(1.0f / SMAP_WIDTH, 1.0f / SMAP_HEIGHT); // size of one texture sample
-	float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
-	float2 texelPos = uvCoord * float2(SMAP_WIDTH, SMAP_HEIGHT);
+	//float2 dx = float2(1.0f / SMAP_WIDTH, 1.0f / SMAP_HEIGHT); // size of one texture sample
+	//float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
+	//float2 texelPos = uvCoord * float2(smapSize.x, smapSize.y);
+	//float2 lerps = frac(texelPos);
+	//uvCoord = (texelPos - lerps) / float2(smapSize.y, smapSize.x);
 
-	float s = shadowMap[0].Sample(AnisoSampler, uvCoord).r;
-	//return float4(s, s, s, 1);
-	// 
+	//if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
+	//	return float4(0, 0.3, 0, 1);
+	//float s = shadowMap[0].Sample(AnisoSampler, uvCoord).r;
+	////return float4(s, s, s, 1);
+	//// 
 	//float s0 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord).r);
 	//float s1 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
 	//float s2 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r);
 	//float s3 = ((pos.z - SHADOW_EPSILON) < shadowMap[0].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r);
 	//return float4(s0, s1, s2, s3);
 
-	//// Grid for seing shadowmap texels
-	/*if (frac(texelPos.x) < 0.1 || frac(texelPos.y) < 0.1)
-		return float4(0, 0.3, 0, 1);*/
+	////// Grid for seing shadowmap texels
 
 	return clamp(float4(finalColor,1),0,1);
 }
