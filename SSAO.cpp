@@ -79,11 +79,30 @@ void SSAO::createNosieTexture()
 	shaderResourceViewDesc.Texture2D.MipLevels = 1;
 
 	gDevice->CreateShaderResourceView(noiseTexture, &shaderResourceViewDesc, &noiseShader);
+
+
+	D3D11_SAMPLER_DESC sd;
+	sd.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	sd.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sd.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sd.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sd.MipLODBias = 0;
+	sd.MaxAnisotropy = 1;
+	sd.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	sd.BorderColor[0] = 0;
+	sd.BorderColor[1] = 0;
+	sd.BorderColor[2] = 0;
+	sd.BorderColor[3] = 0;
+	sd.MinLOD = 0;
+	sd.MaxLOD = D3D11_FLOAT32_MAX;
+
+	gDevice->CreateSamplerState(&sd, &noiseSampler);
 }
 
 void SSAO::setNoise()
 {
 	gDeviceContext->PSSetShaderResources(SSAO_TEXTURE_SLOT, 1, &noiseShader);
+	gDeviceContext->PSSetSamplers(0, 1, &noiseSampler);
 }
 
 void SSAO::createConstantBuffer()

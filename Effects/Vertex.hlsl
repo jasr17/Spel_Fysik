@@ -15,7 +15,7 @@ struct VS_OUT
 cbuffer cbuffs : register(b0)
 {
     matrix mWorld, mInvTraWorld, mWorldViewPerspective;
-	matrix mWorldViewMatrix;
+	matrix mWorldViewMatrix, mProjectionMatrix;
 };
 
 //-----------------------------------------------------------------------------------------

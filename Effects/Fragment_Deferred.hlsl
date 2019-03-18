@@ -1,7 +1,7 @@
 // Konstanter
 #define SHADOW_EPSILON 0.00001
-#define SMAP_WIDTH  (1080 * 0.9)
-#define SMAP_HEIGHT (1920 * 0.9)
+#define SMAP_WIDTH  (1920 * 0.9)
+#define SMAP_HEIGHT (1080 * 0.9)
 
 struct ShaderLight
 {
@@ -9,51 +9,75 @@ struct ShaderLight
 	float4 color; //.a is intensity
 	float4x4 viewPerspectiveMatrix;
 };
-cbuffer lightBuffer : register(b0)
+cbuffer lightBuffer			: register(b0)
 {
 	float4 lightCount;
 	ShaderLight lights[10];
 };
-cbuffer cameraBuffer : register(b1)
+cbuffer cameraBuffer		: register(b1)
 {
 	float4 camPos;
 }
-cbuffer kernelBuffer : register(b3) 
+cbuffer matrixBuffer		: register(b4) {
+	matrix mWorld, mInvTraWorld, mWorldViewPerspective;
+	matrix mWorldViewMatrix, mProjectionMatrix;
+}
+cbuffer kernelBuffer		: register(b3) 
 {
 	float4 kernels[8];
 	float4 nrOfKernels;
 }
 
 //Texturer/samplers
-Texture2D Textures[5]	: register(t0);
-Texture2D Noise			: register(t5);
-Texture2D shadowMap[10] : register(t10);
+Texture2D Textures[5]		: register(t0);
+Texture2D Noise				: register(t5);
+Texture2D shadowMap[10]		: register(t10);
 SamplerState AnisoSampler;
+SamplerState noiseSampler	: register(s0);
 
 //SSAO
 //-----------------------------------------------------//
 //Texture2D NoiseMap :register ();
 //Först hitta pixelns position i viewspace och dess normal (textures2).
 
+
+
 float3x3 SSAO_TBN(in float3 randomVector, in float3 normal) {
 	float3 tangent = normalize(randomVector - normal * dot(randomVector, normal));
 	float3 bitangent = cross(normal, tangent);
 	return float3x3(tangent, bitangent, normal);
 }
-float occlusion()
+
+float3 getOrigin(in float z) {
+
+	return camPos * z;
+}
+
+float occlusion(in float3x3 tbn,in float4 viewPos)
 {
 	float occlusion = 0.0;
-	/*
-	for(int i = 0; i < kernelSize;i++){
+	float4 view = viewPos;
+	float check;
+	for (int i = 0; i < nrOfKernels.x; i++) {
+		view = float4(viewPos.xyz + mul(tbn, kernels[i]), 1);
 
-	*/
+		view = mul(view, mProjectionMatrix);
+		view /= view.w;
+
+		float2 uvCoord = float2(0.5f * view.x + 0.5f, -0.5f * view.y + 0.5f);
+		float s0 = Textures[4].Sample(AnisoSampler, uvCoord).z;
+
+		//rangeCheck
+		 check = abs(view.z - s0) < 1 ? 1.0 : 0.0;
+		check = 1;
+		
+		occlusion += (view.z < s0 ? 1.0 : 0.0) * check;
+	}
+
+	occlusion = 1 - (occlusion / nrOfKernels.x);
+	return occlusion;
 }
-//-------------
-//Rotation functions
 
-
-
-//----------------------------------------------------//
 
 
 float checkShadowMap(float4 pos, int shadowMapIndex)
@@ -101,24 +125,25 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 	float4 position = Textures[2].Sample(AnisoSampler, input.uv);
     float4 specular = Textures[3].Sample(AnisoSampler, input.uv);
 	float4 viewPos	= Textures[4].Sample(AnisoSampler, input.uv);
-	float4 randomVec = Noise.Sample(AnisoSampler, input.uv);
+	float4 randomVec = Noise.Sample(noiseSampler, input.uv * 32);
 	
 	
 	//OM KONSTIG BILD; BYT PLATS PÅ VIEWPOS OCH SSAO_TBN
-	float3 TBNVec = mul(viewPos.xyz, SSAO_TBN(normalize(float3(1, 1, 1))/*randomVector*/, normal));
+	//float3x3 TBN = SSAO_TBN(normalize(randomVec), normal);				//	mul(normal.xyz, SSAO_TBN(normalize(randomVec), normal));
+	float3x3 TBN = SSAO_TBN(normalize(float4(1,1,1,1)), normal);
 
-
+	//return float4(viewPos.z, viewPos.z, viewPos.z,1);
 
 	//-------------------------------------
 	//SSAO
 	//------------------------------------
 	//To calculate the occlusion we need the pixels location in viewSpace
-	float3 origin;
+	float3 origin = getOrigin(position.x);
 
 	//---------------------------------------
-
-
-	float3 ambient = float3(0.2, 0.2, 0.2);
+	float o = occlusion(TBN, viewPos);
+	return float4(o, o, o, 1);
+	float3 ambient = float3(0.2, 0.2, 0.2) * (occlusion(TBN, viewPos));
     float3 finalColor = color.xyz * ambient;
 	for (int i = 0; i < lightCount.x; i++)
     {
@@ -154,11 +179,14 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 		test.xyz *= kernels[i];
 	}
 
-	//return clamp(float4(finalColor,1),0,1);
+	return clamp(float4(finalColor,1),0,1);
+	//return float4(origin, 1);
 	//return viewPos;
 	//return abs(noise);
 	/*if (nrOfKernels.x == 0)
 		return float4(0, 0, 0, 1);*/
-
-	return test;
+	//return viewPos;
+	//return randomVec;
+	//return float4(TBNVec, 1);
+	
 }

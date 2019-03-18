@@ -22,6 +22,7 @@ private:
 	ID3D11Texture2D* noiseTexture = nullptr; 
 	ID3D11ShaderResourceView* noiseShader = nullptr;
 	ID3D11Buffer* cBuffer = nullptr;
+	ID3D11SamplerState* noiseSampler = nullptr;
 
 	struct kernelConstantBuffer {
 		float4 kernels[KERNELSIZE];

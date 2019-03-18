@@ -40,7 +40,7 @@ float2 mousePos;
 Mouse::ButtonStateTracker mouseTracker;
 //world data
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective, mWorldViewMatrix;
+	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective, mWorldViewMatrix, mProjectionMatrix;
 };
 //player variables
 bool grounded = false;
@@ -80,9 +80,11 @@ ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 ShaderSet gShader_Deferred;
 
-////Deffered shading
+//Deffered shading
 
 Deferred gDeferred;
+
+
 
 //GaussianBlurring
 TextureBlurrer textureBlurrer;
@@ -166,6 +168,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
 	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, view), perspective));
 	mat.mWorldViewMatrix = XMMatrixTranspose(XMMatrixMultiply(worldMat, view));
+	mat.mProjectionMatrix = XMMatrixTranspose(perspective);
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
@@ -294,6 +297,7 @@ void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle
 
 void Render() {
 	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
+	gDeviceContext->PSSetConstantBuffers(4, 1, &gMatrixBuffer);
 	lightManager.updateLightBuffer();
 	lightManager.bindLightBuffer();
 	// clear the back buffer to a deep blue
