@@ -82,6 +82,8 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 		ao.createConstantBuffer();
 		ao.createNosieTexture();
 		ao.setNoise();
+		ao.createSSAOShaderResources();
+		ao.setShaderSet();
 
 		return true;
 }
