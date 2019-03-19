@@ -212,6 +212,8 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 		test.xyz *= kernels[i];
 	}
 
+	//SSAO blur
+
 	return clamp(float4(finalColor,1),0,1);
 	//return float4(origin, 1);
 	//return viewPos;

@@ -25,6 +25,8 @@ public:
 	void setShaderSet(ShaderSet const&);
 	//Render all geometry to a texture.
 	void BindFirstPass(ID3D11DeviceContext* context, ID3D11DepthStencilView* zBuffer);
+	//SSAO pass
+
 	//Bind result from first pass to FSQ and draw.
 	void BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetView * backBuffer, ID3D11Buffer *cameraBuffer);
 
