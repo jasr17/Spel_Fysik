@@ -1,7 +1,7 @@
 #pragma once
 #include"standardClasses.h"
 const int SSAO_TEXTURE_SLOT = 5;
-const int KERNELSIZE = 8;
+const int KERNELSIZE = 64;
 const int NOISESIZE = 8;
 class SSAO
 {

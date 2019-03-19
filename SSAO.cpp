@@ -31,7 +31,7 @@ void SSAO::generateKernelsAndNoise()
 {
 	for (int i = 0; i < KERNELSIZE; i++) 
 	{
-		kernels[i] = float4(random(-1, 1), random(-1, 1), random(0, 1), 0); //Z will never be negative.
+		kernels[i] = float4(random(-1.0, 1.0), random(-1.0, 1.0), random(0, 1), 0); //Z will never be negative.
 		kernels[i].Normalize();
 
 		float scale = float(i) / float(KERNELSIZE);
