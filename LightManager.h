@@ -2,8 +2,8 @@
 #include "standardClasses.h"
 
 #define maxLightCount 10
-#define SMAP_WIDTH  (Win_WIDTH  * 5)
-#define SMAP_HEIGHT (Win_HEIGHT * 5)
+#define SMAP_WIDTH  (Win_WIDTH  * 3)
+#define SMAP_HEIGHT (Win_HEIGHT * 3)
 
 struct ShaderLight {
 	float4 position = float4(0, 0, 0, 0);

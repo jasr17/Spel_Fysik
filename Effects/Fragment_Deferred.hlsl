@@ -1,5 +1,6 @@
 // Konstanter
-#define SHADOW_EPSILON (0.00001)
+#define SHADOW_EPSILON (0.000006)
+#define SHADOW_EPSILON2 (0.999997)
 
 struct ShaderLight
 {
@@ -36,19 +37,19 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	
 	float2 texelPos = uvCoord * mapSize; 
 	float2 lerps = frac(texelPos); // Posision on the texel. Used in linear interpolation to judge weight of contributon
+	
 
 	// Aligns uvCoords 
 	uvCoord = (texelPos - lerps) / mapSize;
 
 	// Compares (depth - bias) with the shadowmap on 4 neighburing texels
-	float s0 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord).r);
-	float s1 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
-	float s2 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r);
-	float s3 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r);
-
+	float s0 = ((pos.z * SHADOW_EPSILON2) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord).r);
+	float s1 = ((pos.z * SHADOW_EPSILON2) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
+	float s2 = ((pos.z * SHADOW_EPSILON2) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r);
+	float s3 = ((pos.z * SHADOW_EPSILON2) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r);
+	
 	// Interpolates the result of the sampling
 	float shadowCoeff = lerp( lerp(s0, s1, lerps.x), lerp(s2, s3, lerps.x), lerps.y);
-	//float shadowCoeff = lerp(lerp(s3, s2, lerps.x), lerp(s1, s0, lerps.x), lerps.y);
 	
 	// Very blocky version
 	//shadowCoeff = (s0 + s1 + s2 + s3) / 4;

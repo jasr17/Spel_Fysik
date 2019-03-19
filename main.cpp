@@ -104,6 +104,13 @@ struct ViewData {
 
 QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 3);
 Array<int> gIndexArray;  // Visible objects
+// Bools to showcase effects.
+bool gFirstPerson = true;
+bool gFirstPersonPressed = false;
+bool gShowFrustum = false;
+bool gShowFrustumPressed = false;
+bool gShowFrontToBack = false;
+bool gShowFrontToBackPressed = false;
 
 void SetViewport(float width, float height)
 {
@@ -162,7 +169,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = cameraPosition + cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = true;
+	bool povPlayer = gFirstPerson;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -332,7 +339,7 @@ void Render() {
 				//DRAW
 	//objects
 	shader_object.bindShadersAndLayout();	
-	for (int i = 0; i < sortedIndexArray.length(); i++)
+	for (int i = 50 * gShowFrontToBack; i < sortedIndexArray.length(); i++)
 	{
 		updateMatrixBuffer(objects[sortedIndexArray[i]].getWorldMatrix());
 		objects[sortedIndexArray[i]].draw();
@@ -411,16 +418,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		objects.appendCapacity(1000);
 
 		// Frustum cubes to more easily see the frustum
-		//for (int i = 0; i < 9; i++)
-		//{
-		//	Object frustumCube;
-		//	frustumCube.setScale(float3(0.2,0.2,0.2));
-		//	if(i == 0) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0);
-		//	else if(i>4) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0.1);
-		//	
-		//	frustumCube.giveMesh(&meshes[2]);
-		//	objects.add(frustumCube);
-		//}
+		for (int i = 0; i < 9; i++)
+		{
+			Object frustumCube;
+			frustumCube.setScale(float3(0.2,0.2,0.2));
+			if(i == 0) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0);
+			else if(i>4) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0.1);
+			
+			frustumCube.giveMesh(&meshes[2]);
+			objects.add(frustumCube);
+		}
 
 		
 		int nrOfItemsToAdd = 100;
@@ -486,6 +493,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		// Initial rendering of shadowmap. 
 		SetViewport(SMAP_WIDTH, SMAP_HEIGHT);
 		drawToShadowMap();
+		// Set viewPort back to normal
+		SetViewport(Win_WIDTH, Win_HEIGHT);
 
 		clock_t time;
 		while (WM_QUIT != msg.message)
@@ -584,8 +593,49 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 				else grounded = false;
 
+				// Toggle showcase effects
+				// Changes view mode between 1:st and 3:rd person
+				if (kb.V) 
+				{
+					if (gFirstPersonPressed == false) 
+					{
+						gFirstPerson = 1 - gFirstPerson;
+						gFirstPersonPressed = true;
+					}
+				}
+				else 
+					gFirstPersonPressed = false;
+				// Adds view frustum corners with closer far plane
+				if (kb.F)
+				{
+					if (gShowFrustumPressed == false)
+					{
+						gShowFrustum = 1 - gShowFrustum;
+						gShowFrustumPressed = true;
+						for (int i = 0; i < 9; i++)
+						{
+							objects[i].setPosition(float3(0, 0, 0));
+						}
+					}
+				}
+				else
+					gShowFrustumPressed = false;
+
+				// Shows front to back by not rendering the closer objects
+				if (kb.B)
+				{
+					if (gShowFrontToBackPressed == false)
+					{
+						gShowFrontToBack = 1 - gShowFrontToBack;
+						gShowFrontToBackPressed = true;
+					}
+				}
+				else
+					gShowFrontToBackPressed = false;
+
 				//frustum balls
-				//updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
+				if(gShowFrustum)
+					updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
 				//rotate
 				rotation += deltaTime * XM_2PI*0.25*(1.0f / 4);
 				//update cameradata buffer
@@ -600,9 +650,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				{
 					SetViewport(SMAP_WIDTH, SMAP_HEIGHT);
 					drawToShadowMap();
+					// Return viewport back to normal
+					SetViewport(Win_WIDTH, Win_HEIGHT);
 				}
 				//draw deferred maps
-				SetViewport(Win_WIDTH, Win_HEIGHT);
 				Render();
 				//draw deferred maps to full quad
 				gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
