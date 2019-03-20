@@ -1,6 +1,7 @@
 #pragma once
-#include"FullScreenQuad.h"
 #include "SSAO.h"
+#include"FullScreenQuad.h"
+
 struct RenderTargets {
 	ID3D11RenderTargetView		*renderTargetView = nullptr;
 	ID3D11Texture2D				*texture = nullptr;

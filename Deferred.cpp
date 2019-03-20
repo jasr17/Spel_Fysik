@@ -148,6 +148,7 @@ void Deferred::SSAOPass(ID3D11RenderTargetView * backBuffer)
 
 	gDeviceContext->Draw(4, 0);
 	
+	ao.addBlurr();
 	
 }
 

@@ -1,8 +1,9 @@
 #pragma once
+#include"TextureBlurrer.h"
 #include"standardClasses.h"
 const int SSAO_TEXTURE_SLOT = 5;
-const int KERNELSIZE = 64;
-const int NOISESIZE = 8;
+const int KERNELSIZE = 8;
+const int NOISESIZE = 1920;
 class SSAO
 {
 public:
@@ -15,6 +16,7 @@ public:
 	void createSSAOShaderResources();
 	void setPS();
 	void setOM();
+	void addBlurr();
 	ShaderSet* getShader()const;
 	ID3D11ShaderResourceView* getSRV()const;
 	ID3D11RenderTargetView* getTargetView()const;
@@ -42,6 +44,8 @@ private:
 		float4 nrOfKernels;
 		
 	};
+
+	TextureBlurrer blurrer;
 
 };
 

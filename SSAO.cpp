@@ -5,6 +5,7 @@
 SSAO::SSAO()
 {
 	generateKernelsAndNoise();
+	
 }
 
 
@@ -48,7 +49,7 @@ void SSAO::generateKernelsAndNoise()
 
 	for (int i = 0; i < NOISESIZE*NOISESIZE; i++)//8x8 
 	{
-		noise[i] = float3(random(-1, 1), random(-1, 1),0); //rotation around Z
+		noise[i] = float3(random(0, 1), random(0, 1),0); //rotation around Z
 		noise[i].Normalize();
 	}
 }
@@ -154,7 +155,7 @@ void SSAO::createSSAOShaderResources()
 	textureDesc.Height = Win_HEIGHT;
 	textureDesc.MipLevels = 1;
 	textureDesc.ArraySize = 1;
-	textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	textureDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	textureDesc.SampleDesc.Count = 1;
 	textureDesc.Usage = D3D11_USAGE_DEFAULT;
 	textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -188,6 +189,8 @@ void SSAO::createSSAOShaderResources()
 	// Create the shader resource views.
 	
 	gDevice->CreateShaderResourceView(SSAOTexture, &shaderResourceViewDesc, &SSAOShaderResource);
+
+	blurrer.initilize(DXGI_FORMAT_R32_FLOAT, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 	
 }
 
@@ -201,6 +204,13 @@ void SSAO::setOM()
 	gDeviceContext->OMSetRenderTargets(1, &SSAOTarget, NULL);
 	float clearColor[] = { 1,0,1,1 };
 	gDeviceContext->ClearRenderTargetView(SSAOTarget, clearColor);
+}
+
+void SSAO::addBlurr()
+{
+	ID3D11Resource* r;
+	SSAOShaderResource->GetResource(&r);
+	blurrer.blurTexture(r, Win_WIDTH, Win_HEIGHT);
 }
 
 ShaderSet* SSAO::getShader() const

@@ -112,8 +112,8 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 
 	//---------------------------------------
 	//return float4(o, o, o, 1);
-	float3 ambient = float3(0.2, 0.2, 0.2) *ssao;
-    float3 finalColor = color.xyz * ambient ;
+	float3 ambient = float3(0.2, 0.2, 0.2);
+    float3 finalColor = color.xyz * ambient *ssao;
 	for (int i = 0; i < lightCount.x; i++)
     {
 		float shadowCoeff = checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);

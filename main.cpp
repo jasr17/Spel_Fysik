@@ -100,7 +100,7 @@ struct ViewData {
 		fowAngle = XM_PI * 0.45;
 		aspectRatio = (float)(Win_WIDTH) / (Win_HEIGHT);
 		nearZ = 0.01;
-		farZ = 50;
+		farZ = 20;
 	}
 }viewData;
 
