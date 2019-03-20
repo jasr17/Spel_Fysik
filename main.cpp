@@ -208,6 +208,16 @@ public:
 	}
 } player;
 
+struct Toggle {
+	bool on;		// Toggle mode
+	bool pressed;	// Pressed last frame
+	Toggle(bool startMode)
+	{
+		on = startMode;
+		pressed = false;
+	}
+};
+
 HWND InitWindow(HINSTANCE hInstance);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -242,6 +252,7 @@ Deferred gDeferred;
 
 
 //GaussianBlurring
+TextureBlurrer edgeTextureBlurrer;
 TextureBlurrer textureBlurrer;
 
 // Viewdata for use in setting view matrix and view frustum
@@ -261,30 +272,28 @@ struct ViewData {
 
 QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 5);
 Array<int> gIndexArray;  // Visible objects
-// Bools to showcase effects.
-bool gFirstPerson = true;
-bool gFirstPersonPressed = false;
-bool gShowFrustum = false;
-bool gShowFrustumPressed = false;
-bool gShowFrontToBack = false;
-bool gShowFrontToBackPressed = false;
-bool gShowSSAO = false;
-bool gShowSSAOPressed = false;
+// Switches to showcase effects.
+Toggle gFirstPerson(true);
+Toggle gShowFrustum(false);
+Toggle gShowFrontToBack(false);
+Toggle gShowSSAO(false);
+Toggle gShowEdgeBlurr(true);
+Toggle gShowFullBlurr(false);
 
-bool toggle(bool pressedKey, bool& showMode, bool& pressedBefore)
+bool toggle(bool pressedKey, Toggle& showMode)
 {
 	bool successToggle = false;
 	if (pressedKey)
 	{
-		if (pressedBefore == false)
+		if (showMode.pressed == false)
 		{
-			showMode = 1 - showMode;
-			pressedBefore = true;
+			showMode.on = 1 - showMode.on;
+			showMode.pressed = true;
 			successToggle = true;
 		}
 	}
 	else
-		pressedBefore = false;
+		showMode.pressed = false;
 	return successToggle;
 }
 
@@ -333,7 +342,7 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	XMFLOAT3 at = player.cameraPosition + player.cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
-	bool povPlayer = gFirstPerson;
+	bool povPlayer = gFirstPerson.on;
 	XMMATRIX view;
 	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&player.cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
@@ -479,7 +488,7 @@ void Render() {
 				//DRAW
 	//objects
 	shader_object.bindShadersAndLayout();	
-	for (int i = 50 * gShowFrontToBack; i < sortedIndexArray.length(); i++)
+	for (int i = 50 * gShowFrontToBack.on; i < sortedIndexArray.length(); i++)
 	{
 		updateMatrixBuffer(objects[sortedIndexArray[i]].getWorldMatrix());
 		objects[sortedIndexArray[i]].draw();
@@ -530,7 +539,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		CreateMatrixDataBuffer();
 		
-		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalEdgeBlur.hlsl", L"GaussianVerticalEdgeBlur.hlsl");
+		bool creationCheck = edgeTextureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalEdgeBlur.hlsl", L"GaussianVerticalEdgeBlur.hlsl");
+		creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 		
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
@@ -664,11 +674,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				player.updateRotation(mouseController.getMouseMovementThisFrame());
 				player.updateMovement(keyboardController.getState());
 				player.updateCollisionWithTerrain(&terrain);
+
 					// Toggle showcase effects
 				// Changes view mode between 1:st and 3:rd person
-				toggle(keyboardController.getState().V, gFirstPerson, gFirstPersonPressed);
+				toggle(keyboardController.getState().V, gFirstPerson);
 				// Adds view frustum corners with closer far plane
-				if (toggle(keyboardController.getState().F,gShowFrustum,gShowFrustumPressed))
+				if (toggle(keyboardController.getState().F,gShowFrustum))
 				{
 						for (int i = 0; i < 9; i++)
 						{
@@ -677,16 +688,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 
 				// Shows front to back by not rendering the closer objects
-				toggle(keyboardController.getState().B, gShowFrontToBack, gShowFrontToBackPressed);
+				toggle(keyboardController.getState().B, gShowFrontToBack);
 				
 				// Use SSAO
-				toggle(keyboardController.getState().O, gShowSSAO, gShowSSAOPressed);
+				toggle(keyboardController.getState().O, gShowSSAO);
 				
+				// Show Blurring
+				toggle(keyboardController.getState().N, gShowEdgeBlurr);
+				toggle(keyboardController.getState().H, gShowFullBlurr);
+
 				//update mouse (DO IT AFTER IT BEEN USED AND DO IT BEFORE RENDERING, if you do it efter the rendering the mouse movement will lag)
 				mouseController.update(&wndHandle);
 
 				//frustum balls
-				if(gShowFrustum)
+				if(gShowFrustum.on)
 					updateFrustumPoints(player.cameraPosition, player.cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
 				//update cameradata buffer
 				XMFLOAT4 cpD = XMFLOAT4(player.cameraPosition.x, player.cameraPosition.y, player.cameraPosition.z, 1);
@@ -706,21 +721,28 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 				//draw deferred maps
 				Render();
-				//draw deferred maps to full quad
-				if (gShowSSAO)
+				if (gShowSSAO.on)
 					gDeferred.SSAOPass(gBackbufferRTV);
 				else
 				{
+					//draw ssao effect texture
 					gDeferred.SSAOPass(nullptr);
+					//draw deferred maps to full quad
 					gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
 				}
 				
 
 				//blur backBuffer
-				if (!keyboardController.getState().N) {
+				if (gShowEdgeBlurr.on) {
 					ID3D11Resource* r;
 					gBackbufferRTV->GetResource(&r);
-					textureBlurrer.blurTexture(r,20,Win_WIDTH,Win_HEIGHT);
+					edgeTextureBlurrer.blurTexture(r, 20, Win_WIDTH, Win_HEIGHT);
+				}
+
+				if (gShowFullBlurr.on) {
+					ID3D11Resource* r;
+					gBackbufferRTV->GetResource(&r);
+					textureBlurrer.blurTexture(r, 20, Win_WIDTH, Win_HEIGHT);
 				}
 
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
