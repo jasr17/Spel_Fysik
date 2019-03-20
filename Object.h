@@ -7,10 +7,12 @@ private:
 	float3 position = float3(0,0,0);
 	float3 rotation = float3(0,0,0);
 	float3 scale = float3(1,1,1);
+	bool ifChanged = false;
 
 	Mesh* mesh = nullptr;
 
 public:
+	bool popIfChanged();
 	void giveMesh(Mesh* _mesh);
 	float4x4 getWorldMatrix();
 	void setPosition(float3 pos);
@@ -23,7 +25,7 @@ public:
 	void draw();
 	float3 getBoundingBoxPos() const;
 	float3 getBoundingBoxSize() const;
-	float3 getRotatedBoundingBoxSize()const;
+	float3 getRotatedBoundingBoxSize() const;
 	float3 getRotation() const;
 	float3 getPosition() const;
 	float3 getScale() const;
@@ -51,7 +53,7 @@ inline float3 Object::getRotatedBoundingBoxSize() const
 	};
 	for (int i = 0; i < 8; i++)
 	{
-		float3 p = XMVector3Transform(points[i],rotMat);
+		float3 p = XMVector3Transform(points[i], rotMat);
 		if (p.x > MinMaxXPosition.y || MinMaxXPosition.y == -1)MinMaxXPosition.y = p.x;
 		if (p.x < MinMaxXPosition.x || MinMaxXPosition.x == -1)MinMaxXPosition.x = p.x;
 
@@ -62,6 +64,12 @@ inline float3 Object::getRotatedBoundingBoxSize() const
 		if (p.z < MinMaxZPosition.x || MinMaxZPosition.x == -1)MinMaxZPosition.x = p.z;
 	}
 	return float3((MinMaxXPosition.y - MinMaxXPosition.x) / 2, (MinMaxYPosition.y - MinMaxYPosition.x) / 2, (MinMaxZPosition.y - MinMaxZPosition.x) / 2);
+}
+inline bool Object::popIfChanged()
+{
+	bool r = ifChanged;
+	ifChanged = false;
+	return r;
 }
 inline void Object::giveMesh(Mesh * _mesh)
 {
@@ -75,30 +83,37 @@ inline float4x4 Object::getWorldMatrix()
 inline void Object::setPosition(float3 pos)
 {
 	position = pos;
+	ifChanged = true;
 }
 inline void Object::setRotation(float3 rot)
 {
 	rotation = rot;
+	ifChanged = true;
 }
 inline void Object::rotateX(float x)
 {
 	rotation.x += x;
+	ifChanged = true;
 }
 inline void Object::rotateY(float y)
 {
 	rotation.y += y;
+	ifChanged = true;
 }
 inline void Object::rotateZ(float z)
 {
 	rotation.z += z;
+	ifChanged = true;
 }
 inline void Object::setScale(float3 _scale)
 {
 	scale = _scale;
+	ifChanged = true;
 }
 inline void Object::move(float3 offset)
 {
 	position += offset;
+	ifChanged = true;
 }
 inline void Object::draw()
 {

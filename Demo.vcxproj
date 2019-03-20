@@ -97,15 +97,21 @@
     <ClCompile Include="Deferred.cpp" />
     <ClCompile Include="FullScreenQuad.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="SSAO.cpp" />
+    <ClCompile Include="TextureBlurrer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Array.h" />
     <ClInclude Include="Deferred.h" />
+    <ClInclude Include="FrontToBack.h" />
+    <ClInclude Include="Frustum.h" />
     <ClInclude Include="FullScreenQuad.h" />
     <ClInclude Include="LightManager.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="OBJLoader.h" />
+    <ClInclude Include="SSAO.h" />
+    <ClInclude Include="QuadTree.h" />
     <ClInclude Include="standardClasses.h" />
     <ClInclude Include="Terrain.h" />
     <ClInclude Include="TextureBlurrer.h" />
@@ -143,6 +149,11 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.0</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Effects\Fragment_SSAO.hlsl">
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">PS_main</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="Effects\Fragment_Terrain.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">PS_main</EntryPointName>
@@ -195,6 +206,9 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="SSAO_Blur.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

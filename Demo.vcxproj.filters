@@ -27,6 +27,12 @@
     <ClCompile Include="FullScreenQuad.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SSAO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureBlurrer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Array.h">
@@ -56,7 +62,19 @@
     <ClInclude Include="FullScreenQuad.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="QuadTree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Frustum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="TextureBlurrer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SSAO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FrontToBack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -91,5 +109,9 @@
     <FxCompile Include="GaussianVerticalBlur.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
+    <FxCompile Include="Effects\Fragment_SSAO.hlsl">
+      <Filter>Effects</Filter>
+    </FxCompile>
+    <FxCompile Include="SSAO_Blur.hlsl" />
   </ItemGroup>
 </Project>

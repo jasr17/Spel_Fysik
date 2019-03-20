@@ -1,21 +1,22 @@
-struct GeoOut
+struct PS_IN
 {
 	float4 PosW : POSITION;
 	float4 PosH : SV_POSITION;
+	float4 ViewPos : POSITION1;
 	float2 TexCoord : TEXCOORD;
 	float3 Normal : NORMAL;
 };
-struct PS_Out
+struct PS_OUT
 {
 	float4 normal		:	SV_Target0;
-	float4 albeno		:	SV_Target1;
+	float4 color		:	SV_Target1;
 	float4 position		:	SV_Target2;
-    float4 specular     :   SV_TARGET3;
+	float4 specular     :   SV_TARGET3;
+	float4 viewPos		:	SV_TARGET4;
 };
-
-PS_Out PS_main(GeoOut input) : SV_Target
+PS_OUT PS_main(PS_IN input) : SV_Target
 {
-	PS_Out op = (PS_Out)0;
+	PS_OUT op = (PS_OUT)0;
     op.normal = float4(normalize(input.Normal),1);
 	//terrain color
     float heightDiffuse = clamp(input.PosW.y / 5, 0, 1);
@@ -31,10 +32,10 @@ PS_Out PS_main(GeoOut input) : SV_Target
 
     float3 finalColor = clamp(terrainColor, float3(0,0,0), float3(1,1,1));
 
-	op.albeno = float4(finalColor, 1);
+	op.color = float4(finalColor, 1);
 	op.position = input.PosW;
     op.specular = float4(1, 1, 1, 10);
-
+	op.viewPos = input.ViewPos;
     return op;
 
 }

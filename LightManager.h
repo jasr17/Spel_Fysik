@@ -2,6 +2,8 @@
 #include "standardClasses.h"
 
 #define maxLightCount 10
+#define SMAP_WIDTH  (Win_WIDTH  * 1)
+#define SMAP_HEIGHT (Win_HEIGHT * 1)
 
 struct ShaderLight {
 	float4 position = float4(0, 0, 0, 0);
@@ -11,6 +13,7 @@ struct ShaderLight {
 struct ShaderLights {
 	float4 lightCount = float4(0, 0, 0, 0);
 	ShaderLight lights[maxLightCount];
+	float4 smapSize = float4(SMAP_WIDTH, SMAP_HEIGHT, 0, 0);
 };
 
 class LightManager
@@ -136,8 +139,8 @@ inline void LightManager::createBuffers()
 	// Create texture space
 	D3D11_TEXTURE2D_DESC texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
-	texDesc.Width = Win_WIDTH;
-	texDesc.Height = Win_HEIGHT;
+	texDesc.Width = SMAP_WIDTH;
+	texDesc.Height = SMAP_HEIGHT;
 	texDesc.ArraySize = 1;
 	texDesc.MipLevels = 1;
 	texDesc.SampleDesc.Count = 1;
@@ -181,7 +184,7 @@ inline void LightManager::addLight(float3 position, float3 color, float intensit
 	l->color = float4(color.x, color.y, color.z, intensity);
 	float4x4 mv = XMMatrixLookAtLH(position, lookAt, float3(0, 1, 0));
 	matrixViews[lightCount()] = mv;
-	XMMATRIX perspective = XMMatrixPerspectiveFovLH(FOV, (float)(Win_WIDTH) / (Win_HEIGHT), nearPlane, farPlane);
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(FOV, (float)(SMAP_WIDTH) / (SMAP_HEIGHT), nearPlane, farPlane);
 	matrixPerspective[lightCount()] = perspective;
 	l->viewPerspectiveMatrix = XMMatrixTranspose(XMMatrixMultiply(mv, perspective));
 	shadowMapLights.lightCount.x++;
