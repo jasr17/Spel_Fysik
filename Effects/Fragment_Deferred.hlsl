@@ -97,7 +97,7 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 	//float4 viewPos	= Textures[4].Sample(AnisoSampler, input.uv);
 	float ssao = SSAO.Sample(AnisoSampler, input.uv).x;
 
-	return float4(ssao,ssao,1,1);
+	//return float4(ssao,ssao,ssao,1);
 	
 	
 	//OM KONSTIG BILD; BYT PLATS PÅ VIEWPOS OCH SSAO_TBN
@@ -112,7 +112,7 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 
 	//---------------------------------------
 	//return float4(o, o, o, 1);
-	float3 ambient = float3(0.2, 0.2, 0.2);// *o;
+	float3 ambient = float3(0.2, 0.2, 0.2) *ssao;
     float3 finalColor = color.xyz * ambient ;
 	for (int i = 0; i < lightCount.x; i++)
     {

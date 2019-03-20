@@ -148,7 +148,7 @@ void Deferred::SSAOPass(ID3D11RenderTargetView * backBuffer)
 
 	gDeviceContext->Draw(4, 0);
 	
-	ao.setPS();
+	
 }
 
 void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetView * backBuffer, ID3D11Buffer *cameraBuffer)
@@ -173,6 +173,7 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 	}
 
 	context->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
+	ao.setPS();
 	//en kommentar
 	
 

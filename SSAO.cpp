@@ -19,6 +19,12 @@ SSAO::~SSAO()
 	if (cBuffer != nullptr) {
 		cBuffer->Release();
 	}
+	if (SSAOShaderResource != nullptr)
+		SSAOShaderResource->Release();
+	if (SSAOTarget != nullptr)
+		SSAOTarget->Release();
+	if (SSAOTexture != nullptr)
+		SSAOTexture->Release();
 	delete shaderSet;
 }
 
