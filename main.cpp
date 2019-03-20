@@ -275,18 +275,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		meshes.add(Mesh()); meshCheck = meshes[4].loadMesh("Meshes/rock1", smoothShading);
 		meshes.add(Mesh()); meshCheck = meshes[5].loadMesh("Meshes/pineTree", smoothShading);
 		meshes.add(Mesh()); meshCheck = meshes[6].loadMesh("Meshes/cottage", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[7].loadMesh("Meshes/sheep", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[7].loadMesh("Meshes/Storage", flatShading);
 
 		float3 s = terrain.getTerrainSize();
 		float3 scale(0.07,0.07,0.07);
 		objects.appendCapacity(1000);
+		objects.add(Object(float3(10, 1, 10), float3(0, 0, 0), float3(1,1,1), &meshes[7]));
 		for (int i = 0; i < 10; i++)
 		{
 			Object swd = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
 				scale*5,
-				&meshes[7]);
+				&meshes[0]);
 			objects.add(swd);
 		}
 		objects.add(Object(float3(0,0,17),float3(0,0,0),float3(3,3,3),&meshes[0]));

@@ -32,6 +32,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         gaussian[l1] /= sum;
     //apply values
     for (int yy = 0; yy < size; yy++)
+        //pix.xyz += GaussianFunction(2 * ((float) yy / (size - 1)) - 1)/sum * gInput.Load(int3(x, y - size / 2 + yy, 0)).xyz;
         pix.xyz += gaussian[yy] * gInput.Load(int3(x, y - size/2 + yy, 0)).xyz;
 
     gOutput[DTid.xy] = pix;
