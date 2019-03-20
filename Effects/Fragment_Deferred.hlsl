@@ -1,8 +1,5 @@
 // Konstanter
 #define SHADOW_EPSILON (0.000008)
-#define SHADOW_EPSILON2 (0.999997)
-#define SMAP_WIDTH  (1920 * 0.9)
-#define SMAP_HEIGHT (1080 * 0.9)
 
 struct ShaderLight
 {
@@ -14,23 +11,19 @@ cbuffer lightBuffer			: register(b0)
 {
 	float4 lightCount;
 	ShaderLight lights[10];
-	float4 smapSize;  // 
+	float4 smapSize;  
 };
 cbuffer cameraBuffer		: register(b1)
 {
 	float4 camPos;
 }
 
-
 //Texturer/samplers
 Texture2D Textures[5]		: register(t0);
-//Texture2D Noise				: register(t5);
 Texture2D SSAO				: register(t6);
 Texture2D shadowMap[10]		: register(t10);
 SamplerState AnisoSampler;
 SamplerState noiseSampler	: register(s0);
-
-
 
 
 float checkShadowMap(float4 pos, int shadowMapIndex)
@@ -42,25 +35,23 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
 
 	float2 mapSize = float2(smapSize.x, smapSize.y);
-	float2 dx = float2(1.0f / smapSize.x, 1.0f / smapSize.y); // size of one texture sample
+	float2 dx = float2(1.0f / smapSize.x, 1.0f / smapSize.y); // size of one texel
 	
 	float2 texelPos = uvCoord * mapSize; 
-	float2 lerps = frac(texelPos); // Posision on the texel. Used in linear interpolation to judge weight of contributon
+	float2 lerps = frac(texelPos); // Position on the texel. Used in linear interpolation to judge weight of contributon
 	
-
-	// Aligns uvCoords 
+	// Aligns uvCoords to corner of texel so lerps weights make sense
 	uvCoord = (texelPos - lerps) / mapSize;
 
 	// Compares (depth - bias) with the shadowmap on 4 neighburing texels
-	float s0 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord).r);
-	float s1 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
-	float s2 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r);
-	float s3 = ((pos.z - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r);
+	float s0 = ((depth - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord).r);
+	float s1 = ((depth - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, 0.0f)).r);
+	float s2 = ((depth - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(0.0f, dx.y)).r);
+	float s3 = ((depth - SHADOW_EPSILON) < shadowMap[shadowMapIndex].Sample(AnisoSampler, uvCoord + float2(dx.x, dx.y)).r);
 	
 	// Interpolates the result of the sampling
 	float shadowCoeff = lerp( lerp(s0, s1, lerps.x), lerp(s2, s3, lerps.x), lerps.y);
-	
-	
+
 	return shadowCoeff;
 }
 
@@ -78,16 +69,13 @@ float4 PS_main(in PS_IN input) : SV_TARGET
     float4 specular = Textures[3].Sample(AnisoSampler, input.uv);
 	float ssao = SSAO.Sample(AnisoSampler, input.uv).x;
 
-	
 	float3 ambient = float3(0.2, 0.2, 0.2);
     float3 finalColor = color.xyz * ambient *ssao;
 	for (int i = 0; i < lightCount.x; i++)
     {
-		float shadowCoeff = checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);
-		
+		float shadowCoeff = checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);		
         if (shadowCoeff > 0)
         {
-
             float3 lightPos = lights[i].position.xyz;
             float3 lightColor = lights[i].color.rgb;
             float lightIntensity = lights[i].color.a;
@@ -108,6 +96,5 @@ float4 PS_main(in PS_IN input) : SV_TARGET
             }
         }
     }
-	return clamp(float4(finalColor,1),0,1);
-	
+	return clamp(float4(finalColor,1),0,1);	
 }
