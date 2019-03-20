@@ -375,6 +375,9 @@ void drawBoundingBox(Object obj) {
 void drawToShadowMap() {
 	for (int iLight = 0; iLight < lightManager.lightCount(); iLight++)
 	{
+		// Set the viewport to the shadow map's resolution
+		float2 resolution = lightManager.getSmapResolution(iLight);
+		SetViewport(resolution.x, resolution.y);
 		lightManager.setShadowMapForDrawing(iLight);
 		//objects		
 		for (int iObj = 0; iObj < objects.length(); iObj++)
@@ -383,17 +386,12 @@ void drawToShadowMap() {
 			objects[iObj].draw();
 		}
 
-		// If shadowmapping uses frustum culling there can be cases where when the light is behind the player it might not show some shadows that should be there.
-		//for (int iObj = 0; iObj < gIndexArray.length(); iObj++)
-		//{
-		//	lightManager.updateMatrixBuffer(objects[gIndexArray[iObj]].getWorldMatrix(), iLight);
-		//	objects[gIndexArray[iObj]].draw();
-		//}
-
 		//terrain
 		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(), iLight);
 		terrain.draw();
 	}
+	// Return viewport back to normal
+	SetViewport(Win_WIDTH, Win_HEIGHT);
 } 
 
 bool updateChangedObjects()
@@ -543,7 +541,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 		
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
-		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
+		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50, Win_WIDTH / 2, Win_HEIGHT / 2);
 		lightManager.addLight(float3(-7, 10, 7), float3(1, 0.9, 0.7), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50);
 		lightManager.createBuffers();
 
@@ -712,11 +710,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				checkFrustumQuadTreeIntersection();
 				//draw shadow maps
 				if (someObjectHasChanged)
-				{
-					SetViewport(SMAP_WIDTH, SMAP_HEIGHT);
+				{					
 					drawToShadowMap();
-					// Return viewport back to normal
-					SetViewport(Win_WIDTH, Win_HEIGHT);
 				}
 
 				//draw deferred maps
