@@ -21,7 +21,7 @@ PS_OUT PS_main(PS_IN input) : SV_Target
 	//terrain color
     float heightDiffuse = clamp(input.PosW.y / 5, 0, 1);
     float3 green = float3(77.0f / 255, 168.0f / 255, 77.0f / 255);
-    float3 brown = float3(104.0f / 255, 77.0f / 255, 42.0f / 255) * (1 + 0.4 * (sin(input.PosW.x * 15) * sin(input.PosW.z * 15) * sin(input.PosW.y*15)));
+    float3 brown = float3(104.0f / 255, 77.0f / 255, 42.0f / 255);
     float3 grey = float3(124.0f / 255, 124.0f / 255, 124.0f / 255);
     float3 white = float3(1, 1, 1);
     float steepness = clamp(dot(float3(0, 1, 0), op.normal.xyz), 0, 1);

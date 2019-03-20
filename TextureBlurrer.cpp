@@ -2,8 +2,11 @@
 
 
 /*THE INPUT RESOURCE HAS TO BE A TEXTURE2D AND COMPUTESHADER TEXTURE2D STUFF NEED TO BE THE SAME FORMAT AS INPUT TEXTURE*/
-void TextureBlurrer::blurTexture(ID3D11Resource* texture, int size_x, int size_y) {
-	if (initilized) {
+void TextureBlurrer::blurTexture(ID3D11Resource* texture, int blurSize, int size_x, int size_y) {
+	if (initialized) {
+		//update constantbuffer with blur amount and texture size
+		float4 constantBufferData = float4(size_x,size_y,blurSize,0);
+		gDeviceContext->UpdateSubresource(gblurrSizeBuffer,0,0,&constantBufferData,0,0);
 		//fix dispatch size to cover the entire texture, DX, DY are the correct ones. 
 		float dx = (float)size_x / 20, dy = (float)size_y / 20;
 		int DX = dx + (dx - (int)dx > 0.001);
@@ -12,6 +15,7 @@ void TextureBlurrer::blurTexture(ID3D11Resource* texture, int size_x, int size_y
 		gDeviceContext->CopyResource(gInTex, texture);
 
 		//set resources
+		gDeviceContext->CSSetConstantBuffers(0,1,&gblurrSizeBuffer);
 		gDeviceContext->CSSetShaderResources(0, 1, &gInSRV);
 		gDeviceContext->CSSetUnorderedAccessViews(0, 1, &gUAV, nullptr);
 		//set to horizontal
@@ -35,7 +39,7 @@ bool TextureBlurrer::initilize(DXGI_FORMAT format, LPCWSTR horizontalComputeFile
 	if (!createResources(format))return false;
 	if (FAILED(createComputeShader(horizontalComputeFilePath, &gCSH)))return false;
 	if (FAILED(createComputeShader(verticalComputeFilePath, &gCSV)))return false;
-	initilized = true;
+	initialized = true;
 	return true;
 }
 
@@ -74,6 +78,15 @@ HRESULT TextureBlurrer::createComputeShader(LPCWSTR filePath, ID3D11ComputeShade
 
 bool TextureBlurrer::createResources(DXGI_FORMAT format)
 {
+	//blurrSize buffer&view
+	D3D11_BUFFER_DESC buffDesc;
+	ZeroMemory(&buffDesc, sizeof(buffDesc));
+	buffDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buffDesc.Usage = D3D11_USAGE_DEFAULT;
+	buffDesc.ByteWidth = sizeof(float4);
+
+	if (FAILED(gDevice->CreateBuffer(&buffDesc, nullptr,&gblurrSizeBuffer))) return false;
+
 	//texture input
 	D3D11_TEXTURE2D_DESC inTexDesc;
 	ZeroMemory(&inTexDesc, sizeof(inTexDesc));
@@ -89,7 +102,7 @@ bool TextureBlurrer::createResources(DXGI_FORMAT format)
 	inTexDesc.CPUAccessFlags = 0;
 	inTexDesc.MiscFlags = 0;
 
-	HRESULT hr = gDevice->CreateTexture2D(&inTexDesc, nullptr, &gInTex);
+	if (FAILED(gDevice->CreateTexture2D(&inTexDesc, nullptr, &gInTex))) return false;
 	//view input
 	D3D11_SHADER_RESOURCE_VIEW_DESC inSRVDesc;
 	ZeroMemory(&inSRVDesc, sizeof(inSRVDesc));
@@ -98,7 +111,7 @@ bool TextureBlurrer::createResources(DXGI_FORMAT format)
 	inSRVDesc.Texture2D.MostDetailedMip = 0;
 	inSRVDesc.Texture2D.MipLevels = 1;
 
-	hr = gDevice->CreateShaderResourceView(gInTex, &inSRVDesc, &gInSRV);
+	if (FAILED(gDevice->CreateShaderResourceView(gInTex, &inSRVDesc, &gInSRV)))return false;
 
 	//create 2d output texture
 	D3D11_TEXTURE2D_DESC blurredTexDesc;
@@ -133,7 +146,7 @@ bool TextureBlurrer::createResources(DXGI_FORMAT format)
 
 void TextureBlurrer::release()
 {
-	if (initilized) {
+	if (initialized) {
 		gCSH->Release();
 		gCSV->Release();
 		gTexUAV->Release();

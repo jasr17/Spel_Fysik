@@ -52,6 +52,7 @@ float3 cameraPosition = float3(1, 5, 1);
 float3 cameraForward = float3(0, -1, 0);
 float2 cameraRotation = float2(0, 0);
 float rotation = 0;
+bool lockMouse = true;
 
 HWND InitWindow(HINSTANCE hInstance);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -404,7 +405,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 		CreateMatrixDataBuffer();
 		
-		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
+		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalEdgeBlur.hlsl", L"GaussianVerticalEdgeBlur.hlsl");
 		
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
@@ -535,21 +536,25 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				if (mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED) {
 					//do something once
 				}
-				//camera rotation with mouse
-				RECT r; GetWindowRect(wndHandle, &r);//get window size
+				if (state.rightButton)
+					lockMouse = !lockMouse;
+				if (lockMouse) {
+					//camera rotation with mouse
+					RECT r; GetWindowRect(wndHandle, &r);//get window size
 
-				POINT newPos;//get cursor position
-				GetCursorPos(&newPos);
+					POINT newPos;//get cursor position
+					GetCursorPos(&newPos);
 
-				float2 diff = float2(newPos.x, newPos.y) - mousePos;
+					float2 diff = float2(newPos.x, newPos.y) - mousePos;
 
-				SetCursorPos((r.right + r.left) / 2, (r.bottom + r.top) / 2);//set cursor to middle of window
-				GetCursorPos(&newPos);
-				mousePos = float2(newPos.x, newPos.y);//save cursor position
+					SetCursorPos((r.right + r.left) / 2, (r.bottom + r.top) / 2);//set cursor to middle of window
+					GetCursorPos(&newPos);
+					mousePos = float2(newPos.x, newPos.y);//save cursor position
 
-				cameraRotation += float2(diff.y, diff.x)*0.002;//add mouse rotation
+					cameraRotation += float2(diff.y, diff.x)*0.002;//add mouse rotation
 
-				if (mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED)mousePicking((float)Win_WIDTH / 2, (float)Win_HEIGHT / 2);
+					if (mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED)mousePicking((float)Win_WIDTH / 2, (float)Win_HEIGHT / 2);
+				}
 				//keyboard
 				Keyboard::State kb = m_keyboard->GetState();
 				//close window
@@ -663,10 +668,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				
 
 				//blur backBuffer
-				if (state.rightButton) {
+				if (!kb.N) {
 					ID3D11Resource* r;
 					gBackbufferRTV->GetResource(&r);
-					textureBlurrer.blurTexture(r,Win_WIDTH,Win_HEIGHT);
+					textureBlurrer.blurTexture(r,20,Win_WIDTH,Win_HEIGHT);
 				}
 
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer

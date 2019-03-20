@@ -3,7 +3,7 @@
 class TextureBlurrer
 {
 private:
-	bool initilized = false;
+	bool initialized = false;
 	//shaders
 	ID3D11ComputeShader* gCSH;
 	ID3D11ComputeShader* gCSV;
@@ -13,12 +13,14 @@ private:
 	//in resource
 	ID3D11Texture2D* gInTex;
 	ID3D11ShaderResourceView* gInSRV;
+	//blur Amount
+	ID3D11Buffer* gblurrSizeBuffer;
 
 	HRESULT createComputeShader(LPCWSTR filePath, ID3D11ComputeShader** computeShader);
 	bool createResources(DXGI_FORMAT format);
 	void release();
 public:
-	void blurTexture(ID3D11Resource* texture, int size_x, int size_y);
+	void blurTexture(ID3D11Resource* texture, int blurSize, int size_x, int size_y);
 	bool initilize(DXGI_FORMAT format, LPCWSTR horizontalComputeFilePath, LPCWSTR verticalComputeFilePath);
 	TextureBlurrer();
 	~TextureBlurrer();
