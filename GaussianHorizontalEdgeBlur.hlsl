@@ -23,6 +23,8 @@ float GaussianFunction(float x)
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     float x = DTid.x, y = DTid.y;
+    float scale = pow(length((float2(x, y) / textureSize) * 2 - 1) / sqrt(2), 2);
+    float4 nPix = gInput.Load(int3(x, y, 0));
 
     int size = blurrSize;
     //set gaussian values
@@ -32,7 +34,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
     //apply values
     float4 pix = float4(0, 0, 0, 1);
     for (int xx = 0; xx < size; xx++)
-        pix.xyz += GaussianFunction(2 * ((float) xx / (size - 1)) - 1)/sum * gInput.Load(int3(x - size / 2 + xx, y, 0)).xyz;
+       pix.xyz += GaussianFunction(2 * ((float) xx / (size - 1)) - 1) / sum * gInput.Load(int3(x - size / 2 + xx, y, 0)).xyz;
 
-    gOutput[DTid.xy] = pix;
+    gOutput[DTid.xy] = lerp(nPix,pix,scale);
+
 }

@@ -2,6 +2,12 @@
 Texture2D<float4> gInput : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
+cbuffer buff : register(b0)
+{
+    float2 textureSize;
+    float blurrSize;
+}
+
 float GaussianFunction(float x)
 {
     float sigma = 1.f;
@@ -13,26 +19,20 @@ float GaussianFunction(float x)
 }
 
 [numthreads(20, 20, 1)]
-void main( uint3 DTid : SV_DispatchThreadID )
+
+void main(uint3 DTid : SV_DispatchThreadID)
 {
     float x = DTid.x, y = DTid.y;
-    float4 pix = float4(0, 0, 0, 1);
 
-    const int size = 15;
-    float gaussian[size];
+    int size = blurrSize;
     //set gaussian values
     float sum = 0;
     for (int l = 0; l < size; l++)
-    {
-        gaussian[l] = GaussianFunction(2 * ((float) l / (size - 1)) - 1);
-        sum += gaussian[l];
-    }
-    //normalize values
-    for (int l1 = 0; l1 < size; l1++)
-        gaussian[l1] /= sum;
+        sum += GaussianFunction(2 * ((float) l / (size - 1)) - 1);
     //apply values
+    float4 pix = float4(0, 0, 0, 1);
     for (int yy = 0; yy < size; yy++)
-        pix.xyz += gaussian[yy] * gInput.Load(int3(x, y - size/2 + yy, 0)).xyz;
+        pix.xyz += GaussianFunction(2 * ((float) l / (size - 1)) - 1)/sum * gInput.Load(int3(x, y - size / 2 + yy, 0)).xyz;
 
     gOutput[DTid.xy] = pix;
 

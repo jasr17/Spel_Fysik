@@ -46,9 +46,9 @@ void SSAO::generateKernelsAndNoise()
 		kernels[i] *= scale;
 	}
 
-	for (int i = 0; i < NOISESIZE*NOISESIZE; i++)//8x8 
+	for (int i = 0; i < NOISESIZE*NOISESIZE; i++)
 	{
-		noise[i] = float3(random(0, 1), random(0, 1),0); //rotation around Z
+		noise[i] = float3(random(-1, 1), random(-1, 1),0); //rotation around Z
 		noise[i].Normalize();
 	}
 }
@@ -211,7 +211,7 @@ void SSAO::addBlurr()
 {
 	ID3D11Resource* r;
 	SSAOShaderResource->GetResource(&r);
-	blurrer.blurTexture(r, Win_WIDTH, Win_HEIGHT);
+	blurrer.blurTexture(r, 15, Win_WIDTH, Win_HEIGHT);
 }
 
 ShaderSet* SSAO::getShader() const

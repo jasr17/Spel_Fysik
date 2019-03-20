@@ -13,7 +13,7 @@ cbuffer matrixBuffer : register(b4)
 }
 cbuffer kernelBuffer : register(b3)
 {
-	float4 kernels[8];
+	float4 kernels[16];
 	float4 nrOfKernels;
 }
 
