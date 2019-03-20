@@ -15,7 +15,7 @@ public:
 	void setShaderSet(ShaderSet const&);
 	void createSSAOShaderResources();
 	void setPS();
-	void setOM();
+	void setOM(ID3D11RenderTargetView * backBuffer);
 	void addBlurr();
 	ShaderSet* getShader()const;
 	ID3D11ShaderResourceView* getSRV()const;

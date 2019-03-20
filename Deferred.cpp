@@ -6,6 +6,16 @@ Deferred::Deferred()
 	
 }
 
+
+Deferred::~Deferred()
+{
+	delete shaderSet;
+	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
+		if (gBuffer[i].renderTargetView != nullptr) gBuffer[i].renderTargetView->Release();
+		if (gBuffer[i].texture != nullptr)gBuffer[i].texture->Release();
+		if (gBuffer[i].shaderResourceView != nullptr) gBuffer[i].shaderResourceView->Release();
+	}
+}
 void Deferred::initDeferred(ID3D11Device * device)
 {
 	FSQ.CreateQuad(device);
@@ -13,7 +23,7 @@ void Deferred::initDeferred(ID3D11Device * device)
 }
 
 
-bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en egen klass senare behöver den tillgång till Device och skärm info(width,height,depth
+bool Deferred::CreateGBuffer(ID3D11Device * device) 
 	{
 		HRESULT result;
 
@@ -89,16 +99,6 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 		return true;
 }
 
-Deferred::~Deferred()
-{
-	delete shaderSet;
-	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
-		if (gBuffer[i].renderTargetView != nullptr) gBuffer[i].renderTargetView->Release();
-		if (gBuffer[i].texture != nullptr)gBuffer[i].texture->Release();
-		if (gBuffer[i].shaderResourceView != nullptr) gBuffer[i].shaderResourceView->Release();
-	}
-}
-
 ShaderSet Deferred::getShaderSet()
 {
 	return *shaderSet;
@@ -126,10 +126,10 @@ void Deferred::BindFirstPass(ID3D11DeviceContext* context,ID3D11DepthStencilView
 	context->ClearDepthStencilView(zBuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
-void Deferred::SSAOPass(ID3D11RenderTargetView * backBuffer)
+void Deferred::SSAOPass(ID3D11RenderTargetView * backBuffer = nullptr)
 {
 	
-	ao.setOM();
+	ao.setOM(backBuffer);
 
 	ao.getShader()->bindShadersAndLayout();
 	UINT strides = sizeof(Vertex);
@@ -165,9 +165,6 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 	context->IASetVertexBuffers(0, 1, &vertBuffer, &strides, &offset);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	
-
-	//context->PSGetConstantBuffers(1, 1, &cameraBuffer);
-
 	ID3D11ShaderResourceView* srvArray[DEFERRED_BUFFERCOUNT];
 	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
 		srvArray[i] = gBuffer[i].shaderResourceView;
@@ -175,8 +172,6 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 
 	context->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
 	ao.setPS();
-	//en kommentar
-	
 
 	context->Draw(4, 0);
 }

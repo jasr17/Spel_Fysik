@@ -24,12 +24,6 @@ Texture2D Noise				: register(t5);
 SamplerState AnisoSampler;
 SamplerState noiseSampler	: register(s0);
 
-//SSAO
-//-----------------------------------------------------//
-//Texture2D NoiseMap :register ();
-//Först hitta pixelns position i viewspace och dess normal (textures2).
-
-
 
 float3x3 SSAO_TBN(in float3 randomVector, in float3 normal)
 {
@@ -86,7 +80,5 @@ float4 PS_main(in PS_IN input) : SV_Target
 	PS_OUT o = (PS_OUT)0;
 	float ao = occlusion(TBN, viewPos);
 	
-	//o.ssao = float4(ao,ao,ao,1);
 	return float4(ao, ao, ao, 1);
-
 }

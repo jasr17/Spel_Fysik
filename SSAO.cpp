@@ -31,7 +31,6 @@ SSAO::~SSAO()
 
 float lerp(float a, float b, float c) 
 {
-
 	return a + c * (b - a);
 }
 
@@ -136,7 +135,6 @@ void SSAO::createConstantBuffer()
 	gDevice->CreateBuffer(&d, &data, &cBuffer);
 	gDeviceContext->PSSetConstantBuffers(3, 1, &cBuffer);
 
-	//gDeviceContext->UpdateSubresource(cBuffer, 0, 0, &cBuf, 0, 0);
 }
 
 void SSAO::setShaderSet(ShaderSet const& item)
@@ -199,9 +197,12 @@ void SSAO::setPS()
 	gDeviceContext->PSSetShaderResources(6, 1, &SSAOShaderResource);
 }
 
-void SSAO::setOM()
+void SSAO::setOM(ID3D11RenderTargetView * backBuffer)
 {
+	if(backBuffer ==nullptr)
 	gDeviceContext->OMSetRenderTargets(1, &SSAOTarget, NULL);
+	else
+		gDeviceContext->OMSetRenderTargets(1, &backBuffer, NULL);
 	float clearColor[] = { 1,0,1,1 };
 	gDeviceContext->ClearRenderTargetView(SSAOTarget, clearColor);
 }

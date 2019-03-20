@@ -20,8 +20,8 @@ private:
 	SSAO ao;
 public:
 	Deferred();
-	void initDeferred(ID3D11Device* device);
 	virtual ~Deferred();
+	void initDeferred(ID3D11Device* device);
 	ShaderSet getShaderSet();
 	void setShaderSet(ShaderSet const&,ShaderSet const&);
 	//Render all geometry to a texture.
