@@ -6,6 +6,16 @@ Deferred::Deferred()
 	
 }
 
+
+Deferred::~Deferred()
+{
+	delete shaderSet;
+	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
+		if (gBuffer[i].renderTargetView != nullptr) gBuffer[i].renderTargetView->Release();
+		if (gBuffer[i].texture != nullptr)gBuffer[i].texture->Release();
+		if (gBuffer[i].shaderResourceView != nullptr) gBuffer[i].shaderResourceView->Release();
+	}
+}
 void Deferred::initDeferred(ID3D11Device * device)
 {
 	FSQ.CreateQuad(device);
@@ -13,7 +23,7 @@ void Deferred::initDeferred(ID3D11Device * device)
 }
 
 
-bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en egen klass senare behöver den tillgång till Device och skärm info(width,height,depth
+bool Deferred::CreateGBuffer(ID3D11Device * device) 
 	{
 		HRESULT result;
 
@@ -71,72 +81,22 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 		// Create the shader resource views.
 		for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++)
 		{
-			result =device->CreateShaderResourceView(gBuffer[i].texture, &shaderResourceViewDesc, &gBuffer[i].shaderResourceView);
+			result = device->CreateShaderResourceView(gBuffer[i].texture, &shaderResourceViewDesc, &gBuffer[i].shaderResourceView);
 			if (FAILED(result))
 			{
 				return false;
 			}
 		}
 
-		//// Initialize the description of the depth buffer.
-		//D3D11_TEXTURE2D_DESC depthBufferDesc;
-		//ZeroMemory(&depthBufferDesc, sizeof(depthBufferDesc));
-
-		//// Set up the description of the depth buffer.
-		//depthBufferDesc.Width = Win_WIDTH;
-		//depthBufferDesc.Height = Win_HEIGHT;
-		//depthBufferDesc.MipLevels = 1;
-		//depthBufferDesc.ArraySize = 1;
-		//depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		//depthBufferDesc.SampleDesc.Count = 1;
-		//depthBufferDesc.SampleDesc.Quality = 0;
-		//depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		//depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		//depthBufferDesc.CPUAccessFlags = 0;
-		//depthBufferDesc.MiscFlags = 0;
-
-		//// Create the texture for the depth buffer using the filled out description.
-		//result = gDevice->CreateTexture2D(&depthBufferDesc, NULL, &m_depthStencilBuffer);
-		//if (FAILED(result))
-		//{
-		//	return false;
-		//}
-
-		//// Initailze the depth stencil view description.
-		//ZeroMemory(&depthStencilViewDesc, sizeof(depthStencilViewDesc));
-
-		//// Set up the depth stencil view description.
-		//D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc;
-		//depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		//depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		//depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-		//// Create the depth stencil view.
-		//result = device->CreateDepthStencilView(m_depthStencilBuffer, &depthStencilViewDesc, &m_depthStencilView);
-		//if (FAILED(result))
-		//{
-		//	return false;
-		//}
-
-		//// Setup the viewport for rendering.
-		//m_viewport.Width = (float)textureWidth;
-		//m_viewport.Height = (float)textureHeight;
-		//m_viewport.MinDepth = 0.0f;
-		//m_viewport.MaxDepth = 1.0f;
-		//m_viewport.TopLeftX = 0.0f;
-		//m_viewport.TopLeftY = 0.0f;
+		//Create SSAO noise texture.
+		ao.createConstantBuffer();
+		ao.createNosieTexture();
+		ao.setNoise();
+		ao.createSSAOShaderResources();
+		
+		
 
 		return true;
-}
-
-Deferred::~Deferred()
-{
-	delete shaderSet;
-	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
-		if (gBuffer[i].renderTargetView != nullptr) gBuffer[i].renderTargetView->Release();
-		if (gBuffer[i].texture != nullptr)gBuffer[i].texture->Release();
-		if (gBuffer[i].shaderResourceView != nullptr) gBuffer[i].shaderResourceView->Release();
-	}
 }
 
 ShaderSet Deferred::getShaderSet()
@@ -144,9 +104,10 @@ ShaderSet Deferred::getShaderSet()
 	return *shaderSet;
 }
 
-void Deferred::setShaderSet(ShaderSet const &item)
+void Deferred::setShaderSet(ShaderSet const &deferred, ShaderSet const &SSAO)
 {
-	shaderSet = new ShaderSet(item);
+	shaderSet = new ShaderSet(deferred);
+	ao.setShaderSet(SSAO);
 }
 
 void Deferred::BindFirstPass(ID3D11DeviceContext* context,ID3D11DepthStencilView* zBuffer)
@@ -165,6 +126,32 @@ void Deferred::BindFirstPass(ID3D11DeviceContext* context,ID3D11DepthStencilView
 	context->ClearDepthStencilView(zBuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 
+void Deferred::SSAOPass(ID3D11RenderTargetView * backBuffer = nullptr)
+{
+	
+	ao.setOM(backBuffer);
+
+	ao.getShader()->bindShadersAndLayout();
+	UINT strides = sizeof(Vertex);
+	UINT offset = 0;
+	ID3D11Buffer* vertBuffer = FSQ.getVertexBuffer();
+	gDeviceContext->IASetVertexBuffers(0, 1, &vertBuffer, &strides, &offset);
+	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	ID3D11ShaderResourceView* srvArray[DEFERRED_BUFFERCOUNT];
+	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++)
+	{
+		srvArray[i] = gBuffer[i].shaderResourceView;
+	}
+	gDeviceContext->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
+
+
+	gDeviceContext->Draw(4, 0);
+	
+	ao.addBlurr();
+	
+}
+
 void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetView * backBuffer, ID3D11Buffer *cameraBuffer)
 {
 	context->OMSetRenderTargets(1, &backBuffer, NULL);
@@ -178,15 +165,13 @@ void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetV
 	context->IASetVertexBuffers(0, 1, &vertBuffer, &strides, &offset);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	
-
-	context->PSGetConstantBuffers(1, 1, &cameraBuffer);
-
 	ID3D11ShaderResourceView* srvArray[DEFERRED_BUFFERCOUNT];
 	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++) {
 		srvArray[i] = gBuffer[i].shaderResourceView;
 	}
 
 	context->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
+	ao.setPS();
 
 	context->Draw(4, 0);
 }

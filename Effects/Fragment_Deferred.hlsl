@@ -1,6 +1,8 @@
 // Konstanter
 #define SHADOW_EPSILON (0.000008)
 #define SHADOW_EPSILON2 (0.999997)
+#define SMAP_WIDTH  (1920 * 0.9)
+#define SMAP_HEIGHT (1080 * 0.9)
 
 struct ShaderLight
 {
@@ -8,21 +10,28 @@ struct ShaderLight
 	float4 color; //.a is intensity
 	float4x4 viewPerspectiveMatrix;
 };
-cbuffer lightBuffer : register(b0)
+cbuffer lightBuffer			: register(b0)
 {
 	float4 lightCount;
 	ShaderLight lights[10];
 	float4 smapSize;  // 
 };
-cbuffer cameraBuffer : register(b1)
+cbuffer cameraBuffer		: register(b1)
 {
 	float4 camPos;
 }
 
+
 //Texturer/samplers
-Texture2D Textures[4]	: register(t0);
-Texture2D shadowMap[10] : register(t10);
+Texture2D Textures[5]		: register(t0);
+//Texture2D Noise				: register(t5);
+Texture2D SSAO				: register(t6);
+Texture2D shadowMap[10]		: register(t10);
 SamplerState AnisoSampler;
+SamplerState noiseSampler	: register(s0);
+
+
+
 
 float checkShadowMap(float4 pos, int shadowMapIndex)
 {
@@ -51,30 +60,31 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	// Interpolates the result of the sampling
 	float shadowCoeff = lerp( lerp(s0, s1, lerps.x), lerp(s2, s3, lerps.x), lerps.y);
 	
-	// Very blocky version
-	//shadowCoeff = (s0 + s1 + s2 + s3) / 4;
 	
 	return shadowCoeff;
 }
 
-struct PixelShaderInput {
+struct PS_IN {
 	float4 Pos	    : SV_Position;
 	float2 uv		: TEXCOORDS;
 };
 
 //G-bufferns pixelshader
-float4 PS_main(in PixelShaderInput input) : SV_TARGET
+float4 PS_main(in PS_IN input) : SV_TARGET
 {
 	float4 normal	= normalize(Textures[0].Sample(AnisoSampler, input.uv));
-	float4 albeno	= Textures[1].Sample(AnisoSampler, input.uv);
+	float4 color	= Textures[1].Sample(AnisoSampler, input.uv);
 	float4 position = Textures[2].Sample(AnisoSampler, input.uv);
     float4 specular = Textures[3].Sample(AnisoSampler, input.uv);
+	float ssao = SSAO.Sample(AnisoSampler, input.uv).x;
 
+	
 	float3 ambient = float3(0.2, 0.2, 0.2);
-    float3 finalColor = albeno.xyz * ambient;
+    float3 finalColor = color.xyz * ambient *ssao;
 	for (int i = 0; i < lightCount.x; i++)
     {
 		float shadowCoeff = checkShadowMap(mul(position, lights[i].viewPerspectiveMatrix), i);
+		
         if (shadowCoeff > 0)
         {
 
@@ -83,7 +93,7 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
             float lightIntensity = lights[i].color.a;
 
             float3 toLight = normalize(lightPos - position.xyz);
-            float dotNormaltoLight = dot(normal.xyz, toLight); //dot(normal, toLight) if less than one then the triangle is facing the other way, ignore
+            float dotNormaltoLight = dot(normal.xyz, toLight); 
             if (dotNormaltoLight > 0)
             {
 			    //diffuse
@@ -94,9 +104,10 @@ float4 PS_main(in PixelShaderInput input) : SV_TARGET
                 float3 reflekt = normalize(2 * dotNormaltoLight * normal.xyz - toLight);
                 float specularStrength = pow(max(dot(reflekt, toCam), 0), specular.w);
 								
-				finalColor += (lightIntensity * (albeno.xyz * lightColor * diffuseStrength + albeno.xyz * specularStrength * specular.rgb) / pow(distToLight, 0)) * shadowCoeff;
+				finalColor += (lightIntensity * (color.xyz * lightColor * diffuseStrength + color.xyz * specularStrength * specular.rgb) / pow(distToLight, 0)) * shadowCoeff;
             }
         }
     }
 	return clamp(float4(finalColor,1),0,1);
+	
 }

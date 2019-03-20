@@ -1,6 +1,6 @@
 #pragma once
 #include "standardClasses.h"
-const int DEFERRED_BUFFERCOUNT = 4;
+
 class FullScreenQuad
 {
 private:

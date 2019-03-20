@@ -24,6 +24,8 @@ using float4x4 = DirectX::SimpleMath::Matrix;
 extern ID3D11Device* gDevice;
 extern ID3D11DeviceContext* gDeviceContext;
 
+const int DEFERRED_BUFFERCOUNT = 5;
+
 enum typeOfShading {
 	flatShading,
 	smoothShading

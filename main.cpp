@@ -40,7 +40,7 @@ float2 mousePos;
 Mouse::ButtonStateTracker mouseTracker;
 //world data
 struct WorldViewPerspectiveMatrix {
-	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective;
+	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective, mWorldViewMatrix, mProjectionMatrix;
 };
 //player variables
 bool grounded = false;
@@ -80,9 +80,11 @@ ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 ShaderSet gShader_Deferred;
 
-////Deffered shading
+//Deffered shading
 
 Deferred gDeferred;
+
+
 
 //GaussianBlurring
 TextureBlurrer textureBlurrer;
@@ -98,7 +100,7 @@ struct ViewData {
 		fowAngle = XM_PI * 0.45;
 		aspectRatio = (float)(Win_WIDTH) / (Win_HEIGHT);
 		nearZ = 0.01;
-		farZ = 50;
+		farZ = 20;
 	}
 }viewData;
 
@@ -191,6 +193,8 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	mat.mWorld = XMMatrixTranspose(worldMat);
 	mat.mInvTraWorld = XMMatrixTranspose(worldMat.Invert().Transpose());
 	mat.mWorldViewPerspective = XMMatrixTranspose(XMMatrixMultiply(XMMatrixMultiply(worldMat, view), perspective));
+	mat.mWorldViewMatrix = XMMatrixTranspose(XMMatrixMultiply(worldMat, view));
+	mat.mProjectionMatrix = XMMatrixTranspose(perspective);
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
 }
@@ -324,6 +328,7 @@ void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle
 
 void Render() {
 	gDeviceContext->VSSetConstantBuffers(0, 1, &gMatrixBuffer);
+	gDeviceContext->PSSetConstantBuffers(4, 1, &gMatrixBuffer);
 	lightManager.updateLightBuffer();
 	lightManager.bindLightBuffer();
 	// clear the back buffer to a deep blue
@@ -487,7 +492,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_Terrain.hlsl");
 		gShader_Deferred.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_Deferred.hlsl");
-		gDeferred.setShaderSet(gShader_Deferred);
+		
+		ShaderSet shader_SSAO;
+		shader_SSAO.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_SSAO.hlsl");
+		//gShader_SSAO.createShaders(L"Effects/Vertex_Noise.hlsl", nullptr, L"Effects/Fragment_Noise.hlsl");
+		gDeferred.setShaderSet(gShader_Deferred, shader_SSAO);
+
 		ShowWindow(wndHandle, nCmdShow);
 
 		// Inserts objects in quadtree and partitions it.
@@ -641,6 +651,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				//draw deferred maps
 				Render();
 				//draw deferred maps to full quad
+				gDeferred.SSAOPass(gBackbufferRTV);
+				
 				gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
 
 				//blur backBuffer
