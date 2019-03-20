@@ -197,13 +197,13 @@ void SSAO::setPS()
 	gDeviceContext->PSSetShaderResources(6, 1, &SSAOShaderResource);
 }
 
-void SSAO::setOM(ID3D11RenderTargetView * backBuffer)
+void SSAO::setOMRenderTarget(ID3D11RenderTargetView * backBuffer)
 {
-	if(backBuffer ==nullptr)
+	if(backBuffer == nullptr)
 	gDeviceContext->OMSetRenderTargets(1, &SSAOTarget, NULL);
 	else
 		gDeviceContext->OMSetRenderTargets(1, &backBuffer, NULL);
-	float clearColor[] = { 1,0,1,1 };
+	float clearColor[] = { 1,1,1,1 };
 	gDeviceContext->ClearRenderTargetView(SSAOTarget, clearColor);
 }
 
@@ -228,4 +228,5 @@ ID3D11RenderTargetView * SSAO::getTargetView()const
 {
 	return SSAOTarget;
 }
+
 

@@ -6,20 +6,6 @@ const int KERNELSIZE = 8;
 const int NOISESIZE = 1920;
 class SSAO
 {
-public:
-	SSAO();
-	virtual ~SSAO();
-	void createNosieTexture();
-	void setNoise();
-	void createConstantBuffer();
-	void setShaderSet(ShaderSet const&);
-	void createSSAOShaderResources();
-	void setPS();
-	void setOM(ID3D11RenderTargetView * backBuffer);
-	void addBlurr();
-	ShaderSet* getShader()const;
-	ID3D11ShaderResourceView* getSRV()const;
-	ID3D11RenderTargetView* getTargetView()const;
 private:
 
 	ID3D11RenderTargetView* SSAOTarget = nullptr;
@@ -46,6 +32,21 @@ private:
 	};
 
 	TextureBlurrer blurrer;
+
+public:
+	SSAO();
+	virtual ~SSAO();
+	void createNosieTexture();
+	void setNoise();
+	void createConstantBuffer();
+	void setShaderSet(ShaderSet const&);
+	void createSSAOShaderResources();
+	void setPS();
+	void setOMRenderTarget(ID3D11RenderTargetView * backBuffer);
+	void addBlurr();
+	ShaderSet* getShader()const;
+	ID3D11ShaderResourceView* getSRV()const;
+	ID3D11RenderTargetView* getTargetView()const;
 
 };
 

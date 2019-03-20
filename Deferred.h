@@ -32,5 +32,6 @@ public:
 	void BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetView * backBuffer, ID3D11Buffer *cameraBuffer);
 
 	ID3D11Resource* getResource(int index) const;
+
 };
 

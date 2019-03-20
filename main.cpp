@@ -104,7 +104,7 @@ struct ViewData {
 	}
 }viewData;
 
-QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 3);
+QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 5);
 Array<int> gIndexArray;  // Visible objects
 // Bools to showcase effects.
 bool gFirstPerson = true;
@@ -113,7 +113,7 @@ bool gShowFrustum = false;
 bool gShowFrustumPressed = false;
 bool gShowFrontToBack = false;
 bool gShowFrontToBackPressed = false;
-bool gShowSSAO = true;
+bool gShowSSAO = false;
 bool gShowSSAOPressed = false;
 
 bool toggle(bool pressedKey, bool& showMode, bool& pressedBefore)
@@ -651,9 +651,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				//draw deferred maps
 				Render();
 				//draw deferred maps to full quad
-				gDeferred.SSAOPass(gBackbufferRTV);
+				if (gShowSSAO)
+					gDeferred.SSAOPass(gBackbufferRTV);
+				else
+				{
+					gDeferred.SSAOPass(nullptr);
+					gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
+				}
 				
-				gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
 
 				//blur backBuffer
 				if (state.rightButton) {

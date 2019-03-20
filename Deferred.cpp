@@ -129,7 +129,7 @@ void Deferred::BindFirstPass(ID3D11DeviceContext* context,ID3D11DepthStencilView
 void Deferred::SSAOPass(ID3D11RenderTargetView * backBuffer = nullptr)
 {
 	
-	ao.setOM(backBuffer);
+	ao.setOMRenderTarget(backBuffer);
 
 	ao.getShader()->bindShadersAndLayout();
 	UINT strides = sizeof(Vertex);
@@ -180,3 +180,4 @@ ID3D11Resource * Deferred::getResource( int index) const
 {
 	return gBuffer[index].texture;
 }
+
