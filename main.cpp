@@ -124,18 +124,6 @@ void SetViewport(float width, float height)
 	gDeviceContext->RSSetViewports(1, &vp);
 }
 
-void SetViewportSM()
-{
-	D3D11_VIEWPORT vp;
-	vp.Width = (float)SMAP_WIDTH;
-	vp.Height = (float)SMAP_HEIGHT;
-	vp.MinDepth = 0.0f;
-	vp.MaxDepth = 1.0f;
-	vp.TopLeftX = 0;
-	vp.TopLeftY = 0;
-	gDeviceContext->RSSetViewports(1, &vp);
-}
-
 void CreateMatrixDataBuffer() {
 
 	D3D11_BUFFER_DESC desc;
@@ -393,8 +381,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		CreateMatrixDataBuffer();
 		
 		bool creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
-		//creationCheck = glowBlurrer.initilize(DXGI_FORMAT_R32G32B32A32_FLOAT, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
-
+		
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0),XM_PI*0.45,0.01,50);
 		lightManager.addLight(float3(-7, 10, 7), float3(1, 0.9, 0.7), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50);
@@ -499,7 +486,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		clock_t time;
 		while (WM_QUIT != msg.message)
 		{
-			time = clock();
+			
 			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 			{
 				TranslateMessage(&msg);
@@ -507,6 +494,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			}
 			else
 			{
+				time = clock();
 				//Mouse
 				Mouse::State state = mouse->GetState();
 				mouseTracker.Update(state);
@@ -666,9 +654,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
+
+				time = clock() - time;
+				deltaTime = (float)time / 1000.0f;
 			}
-			time = clock() - time;
-			deltaTime = (float)time / 1000.0f;
+			
 		}
 
 		CoUninitialize();
