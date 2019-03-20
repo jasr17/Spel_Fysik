@@ -19,6 +19,7 @@ SSAO::~SSAO()
 	if (cBuffer != nullptr) {
 		cBuffer->Release();
 	}
+	delete shaderSet;
 }
 
 float lerp(float a, float b, float c) 
@@ -131,9 +132,9 @@ void SSAO::createConstantBuffer()
 	//gDeviceContext->UpdateSubresource(cBuffer, 0, 0, &cBuf, 0, 0);
 }
 
-void SSAO::setShaderSet()
+void SSAO::setShaderSet(ShaderSet const& item)
 {
-	shaderSet.createShaders(L"Vertex_Deferred",nullptr,L"Fragment_SSAO");
+	shaderSet = new ShaderSet(item);
 }
 
 void SSAO::createSSAOShaderResources()
@@ -182,5 +183,32 @@ void SSAO::createSSAOShaderResources()
 	
 	gDevice->CreateShaderResourceView(SSAOTexture, &shaderResourceViewDesc, &SSAOShaderResource);
 	
+}
+
+void SSAO::setPS()
+{
+	gDeviceContext->PSSetShaderResources(6, 1, &SSAOShaderResource);
+}
+
+void SSAO::setOM()
+{
+	gDeviceContext->OMSetRenderTargets(1, &SSAOTarget, NULL);
+	float clearColor[] = { 1,0,1,1 };
+	gDeviceContext->ClearRenderTargetView(SSAOTarget, clearColor);
+}
+
+ShaderSet* SSAO::getShader() const
+{
+	return shaderSet;
+}
+
+ID3D11ShaderResourceView * SSAO::getSRV() const
+{
+	return SSAOShaderResource;
+}
+
+ID3D11RenderTargetView * SSAO::getTargetView()const
+{
+	return SSAOTarget;
 }
 

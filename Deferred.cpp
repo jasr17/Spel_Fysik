@@ -83,7 +83,8 @@ bool Deferred::CreateGBuffer(ID3D11Device * device) // Om denna flyttas till en 
 		ao.createNosieTexture();
 		ao.setNoise();
 		ao.createSSAOShaderResources();
-		ao.setShaderSet();
+		
+		
 
 		return true;
 }
@@ -103,9 +104,10 @@ ShaderSet Deferred::getShaderSet()
 	return *shaderSet;
 }
 
-void Deferred::setShaderSet(ShaderSet const &item)
+void Deferred::setShaderSet(ShaderSet const &deferred, ShaderSet const &SSAO)
 {
-	shaderSet = new ShaderSet(item);
+	shaderSet = new ShaderSet(deferred);
+	ao.setShaderSet(SSAO);
 }
 
 void Deferred::BindFirstPass(ID3D11DeviceContext* context,ID3D11DepthStencilView* zBuffer)
@@ -122,6 +124,31 @@ void Deferred::BindFirstPass(ID3D11DeviceContext* context,ID3D11DepthStencilView
 		context->ClearRenderTargetView(renderTargets[i], color);
 	}
 	context->ClearDepthStencilView(zBuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+void Deferred::SSAOPass(ID3D11RenderTargetView * backBuffer)
+{
+	
+	ao.setOM();
+
+	ao.getShader()->bindShadersAndLayout();
+	UINT strides = sizeof(Vertex);
+	UINT offset = 0;
+	ID3D11Buffer* vertBuffer = FSQ.getVertexBuffer();
+	gDeviceContext->IASetVertexBuffers(0, 1, &vertBuffer, &strides, &offset);
+	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	ID3D11ShaderResourceView* srvArray[DEFERRED_BUFFERCOUNT];
+	for (int i = 0; i < DEFERRED_BUFFERCOUNT; i++)
+	{
+		srvArray[i] = gBuffer[i].shaderResourceView;
+	}
+	gDeviceContext->PSSetShaderResources(0, DEFERRED_BUFFERCOUNT, srvArray);
+
+
+	gDeviceContext->Draw(4, 0);
+	
+	ao.setPS();
 }
 
 void Deferred::BindSecondPass(ID3D11DeviceContext * context, ID3D11RenderTargetView * backBuffer, ID3D11Buffer *cameraBuffer)

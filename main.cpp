@@ -486,8 +486,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
 		shader_terrain.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_Terrain.hlsl");
 		gShader_Deferred.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_Deferred.hlsl");
+		
+		ShaderSet shader_SSAO;
+		shader_SSAO.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_SSAO.hlsl");
 		//gShader_SSAO.createShaders(L"Effects/Vertex_Noise.hlsl", nullptr, L"Effects/Fragment_Noise.hlsl");
-		gDeferred.setShaderSet(gShader_Deferred);
+		gDeferred.setShaderSet(gShader_Deferred, shader_SSAO);
+
 		ShowWindow(wndHandle, nCmdShow);
 
 		// Inserts objects in quadtree and partitions it.
@@ -662,6 +666,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				//draw deferred maps
 				Render();
 				//draw deferred maps to full quad
+				gDeferred.SSAOPass(gBackbufferRTV);
+				
 				gDeferred.BindSecondPass(gDeviceContext, gBackbufferRTV, gCameraBuffer);
 
 				//blur backBuffer

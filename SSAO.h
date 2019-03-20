@@ -11,15 +11,20 @@ public:
 	void createNosieTexture();
 	void setNoise();
 	void createConstantBuffer();
-	void setShaderSet();
+	void setShaderSet(ShaderSet const&);
 	void createSSAOShaderResources();
+	void setPS();
+	void setOM();
+	ShaderSet* getShader()const;
+	ID3D11ShaderResourceView* getSRV()const;
+	ID3D11RenderTargetView* getTargetView()const;
 private:
 
 	ID3D11RenderTargetView* SSAOTarget = nullptr;
 	ID3D11Texture2D* SSAOTexture = nullptr;
 	ID3D11ShaderResourceView* SSAOShaderResource = nullptr;
 
-	ShaderSet shaderSet;
+	ShaderSet *shaderSet;
 	void generateKernelsAndNoise();
 	//Kernels will function as samplepoints in a hemisphere above a wanted pixel
 	float4 kernels[KERNELSIZE];
