@@ -24,35 +24,189 @@ float deltaTime = 0;
 
 Array<Mesh> meshes;
 Array<Object> objects;
-Object sphere;
+
 Object cube;
+Object sphere;
 
 Terrain terrain;
 
 LightManager lightManager;
 
-//mouse Picking location
-float3 lookPos(0, 0, 0);
-//input stuff
-std::unique_ptr<DirectX::Keyboard> m_keyboard;
-std::unique_ptr<Mouse> mouse = std::make_unique<Mouse>();
-float2 mousePos;
-Mouse::ButtonStateTracker mouseTracker;
+struct MousePicking {
+private:
+	float3 lookPos = float3(0, 0, 0);
+public:
+	float3 pointMouse(float3 worldLocation, float3 direction,float screenSpace_x, float screenSpace_y) {
+		//pos between -1 and 1
+		float SSxN = 2 * (screenSpace_x / (Win_WIDTH)) - 1;
+		float SSyN = -(2 * (screenSpace_y / (Win_HEIGHT)) - 1);
+		float4 vRayPos(0, 0, 0, 1);
+		float4 vRayDir(SSxN, SSyN, 1, 0);
+		vRayDir.Normalize();
+		//convert to world space
+		XMFLOAT3 at = worldLocation + direction;
+		XMFLOAT3 up(0, 1, 0);
+		float4x4 mInvView = ((float4x4)XMMatrixLookAtLH(XMLoadFloat3(&worldLocation), XMLoadFloat3(&at), XMLoadFloat3(&up))).Invert();
+		float4 wRayPos = XMVector4Transform(vRayPos, mInvView);
+		float4 wRayDir = XMVector4Transform(vRayDir, mInvView);
+		//check all objects
+		float t = -1;
+		for (int i = 0; i < objects.length(); i++)
+		{
+			float tt = objects[i].castRayOnObject(float3(wRayPos.x, wRayPos.y, wRayPos.z), float3(wRayDir.x, wRayDir.y, wRayDir.z));
+			if ((tt < t && tt > 0) || t < 0)t = tt;
+		}
+		//apply position
+		if (t > 0) {
+			float4 target = (wRayPos + wRayDir * t);
+			lookPos = float3(target.x, target.y, target.z);
+			return float3(target.x,target.y,target.z);
+		}
+		return float3(0,0,0);
+	}
+	float3 getPointLocation() {
+		return lookPos;
+	}
+} mousePicking;
+
+struct KeyboardController {
+private:
+	std::unique_ptr<DirectX::Keyboard> keyboard = std::make_unique<Keyboard>();
+public:
+	Keyboard* getKeyboard() {
+		return keyboard._Myptr();
+	}
+	Keyboard::State getState() {
+		return keyboard->GetState();
+	}
+} keyboardController;
+
+struct MouseController {
+private:
+	bool lockMouse = true;
+	std::unique_ptr<Mouse> mouse = std::make_unique<Mouse>();
+	float2 mousePos;
+	Mouse::ButtonStateTracker mouseTracker;
+
+	void recenterMouse(HWND* _wndHandle) {
+		RECT r; GetWindowRect(*_wndHandle, &r);//get window size
+		SetCursorPos((r.right + r.left) / 2, (r.bottom + r.top) / 2);//set cursor to middle of window
+	}
+	void saveMousePosition() {
+		POINT newPos;
+		GetCursorPos(&newPos);
+		mousePos = float2(newPos.x, newPos.y);//save cursor position
+	}
+	void updateMouseState() {
+		Mouse::State state = mouse->GetState();
+		mouseTracker.Update(state);
+	}
+public:
+	void setWindow(HWND* _wndHandle) {
+		mouse->SetWindow(*_wndHandle);
+		mouse->SetVisible(false);
+	}
+	Mouse* getMouse() {
+		return mouse._Myptr();
+	}
+	Mouse::ButtonStateTracker getMouseState() {
+		return mouseTracker;
+	}
+	float2 getMousePosition() {
+		POINT pos;
+		GetCursorPos(&pos);//get cursor position
+		return float2(pos.x,pos.y);
+	}
+	void update(HWND* _wndHandle) {
+		//NEED TO RECENTER MOUSE BEFORE SAVING THE POSITION
+		if(lockMouse)recenterMouse(_wndHandle);
+		saveMousePosition();
+
+		updateMouseState();
+
+		if (mouseTracker.rightButton == Mouse::ButtonStateTracker::PRESSED) {
+			(lockMouse ? mouse->SetVisible(true) : mouse->SetVisible(false));
+			lockMouse = !lockMouse;
+		}
+	}
+	float2 getMouseMovementThisFrame() {
+		if (lockMouse)
+			return getMousePosition() - mousePos;
+		return float2(0,0);//if the mouse isnt active on platform then it should not technically move
+	}
+} mouseController;
+
 //world data
 struct WorldViewPerspectiveMatrix {
 	XMMATRIX mWorld, mInvTraWorld, mWorldViewPerspective, mWorldViewMatrix, mProjectionMatrix;
 };
-//player variables
-bool grounded = false;
-float gravityForce = 3;
-float3 gravityDirection = float3(0, -1, 0);
-float3 acceleration = float3(0, 0, 0);
-float3 velocity = float3(0, 0, 0);
-float3 cameraPosition = float3(1, 5, 1);
-float3 cameraForward = float3(0, -1, 0);
-float2 cameraRotation = float2(0, 0);
-float rotation = 0;
-bool lockMouse = true;
+struct Player {
+private:
+	//player variables
+	bool grounded = false;
+	float gravityForce = 3;
+	float3 gravityDirection = float3(0, -1, 0);
+	float3 acceleration = float3(0, 0, 0);
+	float3 velocity = float3(0, 0, 0);
+public:
+	//public camera variables
+	float3 cameraPosition = float3(1, 5, 1);
+	float3 cameraForward = float3(0, -1, 0);
+	float2 cameraRotation = float2(0, 0);
+	//public functions
+	Matrix getRotationMatrix() {
+		return float4x4::CreateRotationX(cameraRotation.x)*float4x4::CreateRotationY(cameraRotation.y);
+	}
+	void updateRotation(float2 mouseMovement, float rotationSpeed = 0.002) {
+		//camera rotation with mouse
+		cameraRotation += float2(mouseMovement.y,mouseMovement.x)*rotationSpeed;//add mouse rotation (notice the wrong placement of x and y! moving the mouse on the x axis should rotate on the y axis!)
+		//clamp rotation
+		if (cameraRotation.x > (3.14 / 2)*0.9) cameraRotation.x = (3.14 / 2)*0.9;
+		if (cameraRotation.x < (-3.14 / 2)*0.9) cameraRotation.x = (-3.14 / 2)*0.9;
+
+		//update camera forwardVector
+		cameraForward = XMVector3Transform(float4(0, 0, 1, 1), player.getRotationMatrix());
+	}
+	void updateMovement(Keyboard::State keyboardState) {
+		//camera movement
+		float speed = 1;
+		float jumpForce = 2;
+		float3 left = cameraForward.Cross(float3(0, 1, 0));
+		float3 forward = XMVector3Transform(float4(0, 0, 1, 1), float4x4::CreateRotationY(cameraRotation.y));
+		left.Normalize();
+		float3 movement(0, 0, 0);
+		if (keyboardState.LeftShift) speed *= 2;//sprint
+		if (keyboardState.W) {
+			movement += forward * speed;
+		}
+		if (keyboardState.S) {
+			movement -= forward * speed;
+		}
+		if (keyboardState.A) {
+			movement += left * speed;
+		}
+		if (keyboardState.D) {
+			movement -= left * speed;
+		}
+		if (keyboardState.Space && grounded) {//jump
+			velocity.y = jumpForce;
+			grounded = false;
+		}
+		if (!grounded)velocity += gravityDirection * gravityForce * deltaTime;//dont apply gravity if on ground
+		cameraPosition += movement * deltaTime + velocity * deltaTime;
+	}
+	void updateCollisionWithTerrain(Terrain* _terrain) {
+		//collision, only affects y-axis
+		float3 nextPos = cameraPosition + float3(0, -1, 0);
+		float hy = _terrain->getHeightOfTerrainFromCoordinates(nextPos.x, nextPos.z);
+		if (nextPos.y < hy) {//if below terrain then add force up
+			cameraPosition.y += (hy - nextPos.y) * deltaTime * 5;
+			grounded = true;
+			velocity = float3(0, 0, 0);
+		}
+		else grounded = false;
+	}
+} player;
 
 HWND InitWindow(HINSTANCE hInstance);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -176,12 +330,12 @@ void CreateCameraBuffer() {
 }
 
 void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
-	XMFLOAT3 at = cameraPosition + cameraForward;
+	XMFLOAT3 at = player.cameraPosition + player.cameraForward;
 	//XMFLOAT3 up(0, 1, 0);
 
 	bool povPlayer = gFirstPerson;
 	XMMATRIX view;
-	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
+	if(povPlayer) view = XMMatrixLookAtLH(XMLoadFloat3(&player.cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&viewData.up));
 	else
 	{
 		XMFLOAT3 camPos = float3(8, 10, 0);
@@ -198,33 +352,6 @@ void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward
 	mat.mProjectionMatrix = XMMatrixTranspose(perspective);
 
 	gDeviceContext->UpdateSubresource(gMatrixBuffer, 0, 0, &mat, 0, 0);
-}
-
-void mousePicking(float screenSpace_x, float screenSpace_y) {
-	//pos between -1 and 1
-	float SSxN = 2 * (screenSpace_x / (Win_WIDTH)) - 1;
-	float SSyN = -(2 * (screenSpace_y / (Win_HEIGHT)) - 1);
-	float4 vRayPos(0, 0, 0, 1);
-	float4 vRayDir(SSxN, SSyN, 1, 0);
-	vRayDir.Normalize();
-	//convert to world space
-	XMFLOAT3 at = cameraPosition + cameraForward;
-	XMFLOAT3 up(0, 1, 0);
-	float4x4 mInvView = ((float4x4)XMMatrixLookAtLH(XMLoadFloat3(&cameraPosition), XMLoadFloat3(&at), XMLoadFloat3(&up))).Invert();
-	float4 wRayPos = XMVector4Transform(vRayPos, mInvView);
-	float4 wRayDir = XMVector4Transform(vRayDir, mInvView);
-	//check all objects
-	float t = -1;
-	for (int i = 0; i < objects.length(); i++)
-	{
-		float tt = objects[i].castRayOnObject(float3(wRayPos.x, wRayPos.y, wRayPos.z), float3(wRayDir.x, wRayDir.y, wRayDir.z));
-		if ((tt < t && tt > 0) || t < 0)t = tt;
-	}
-	//apply position
-	if (t > 0) {
-		float4 target = (wRayPos + wRayDir * t);
-		lookPos = float3(target.x, target.y, target.z);
-	}
 }
 
 void drawBoundingBox(Object obj) {
@@ -280,7 +407,7 @@ void checkFrustumQuadTreeIntersection()
 
 	gIndexArray.reset();
 	Frustum frustum;
-	frustum.constructFrustum(cameraPosition, cameraForward, viewData.up, viewData.fowAngle, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
+	frustum.constructFrustum(player.cameraPosition, player.cameraForward, viewData.up, viewData.fowAngle, viewData.aspectRatio, viewData.nearZ, viewData.farZ);
 	
 	gQuadTree.checkAgainstFrustum(gIndexArray, frustum);
 }
@@ -314,7 +441,7 @@ void updateFrustumPoints(float3 camPos, float3 camDir, float3 up, float fowAngle
 	
 
 
-	objects[0].setRotation(float3(cameraRotation.x,cameraRotation.y,0));
+	objects[0].setRotation(float3(player.cameraRotation.x, player.cameraRotation.y,0));
 	objects[0].setPosition(camPos);
 	objects[1].setPosition(pointLeftUpFar);
 	objects[2].setPosition(pointRightUpFar);
@@ -344,7 +471,7 @@ void Render() {
 	float distance = 0;
 	for (int i = 0; i < gIndexArray.length(); i++)
 	{
-		distance = ( cameraPosition - objects[gIndexArray[i]].getPosition() ).Length();
+		distance = (player.cameraPosition - objects[gIndexArray[i]].getPosition() ).Length();
 		frontToBack.insert(distance, gIndexArray[i]);
 	}
 	Array<int> sortedIndexArray = frontToBack.getSortedIndexArray();
@@ -369,8 +496,8 @@ void Render() {
 	}
 	//mousePicking sphere
 	shader_object_onlyMesh.bindShadersAndLayout();
-	sphere.setScale(float3(1, 1, 1)*0.1);
-	sphere.setPosition(lookPos);
+	sphere.setScale(float3(1,1,1)*0.1);
+	sphere.setPosition(mousePicking.getPointLocation());
 	updateMatrixBuffer(sphere.getWorldMatrix());
 	sphere.draw();
 	//terrain
@@ -385,11 +512,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 	MSG msg = { 0 };
 	HWND wndHandle = InitWindow(hInstance); //1. Skapa fönster
 
-	mouse->SetWindow(wndHandle);
-	mouse->SetVisible(false);
+	mouseController.setWindow(&wndHandle);
 
 	//srand(time(NULL));
-	m_keyboard = std::make_unique<Keyboard>();
 
 	CoInitialize(nullptr);
 
@@ -526,102 +651,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			}
 			else
 			{
+				//deltaTime
 				time = clock();
-				//Mouse
-				Mouse::State state = mouse->GetState();
-				mouseTracker.Update(state);
-				if (state.leftButton) {
-					//do something every frame
-				}
-				if (mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED) {
-					//do something once
-				}
-				if (state.rightButton)
-					lockMouse = !lockMouse;
-				if (lockMouse) {
-					//camera rotation with mouse
-					RECT r; GetWindowRect(wndHandle, &r);//get window size
-
-					POINT newPos;//get cursor position
-					GetCursorPos(&newPos);
-
-					float2 diff = float2(newPos.x, newPos.y) - mousePos;
-
-					SetCursorPos((r.right + r.left) / 2, (r.bottom + r.top) / 2);//set cursor to middle of window
-					GetCursorPos(&newPos);
-					mousePos = float2(newPos.x, newPos.y);//save cursor position
-
-					cameraRotation += float2(diff.y, diff.x)*0.002;//add mouse rotation
-
-					if (mouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED)mousePicking((float)Win_WIDTH / 2, (float)Win_HEIGHT / 2);
-				}
-				//keyboard
-				Keyboard::State kb = m_keyboard->GetState();
+				//mousePicking
+				if (mouseController.getMouseState().leftButton == Mouse::ButtonStateTracker::PRESSED)
+					mousePicking.pointMouse(player.cameraPosition, player.cameraForward, (float)Win_WIDTH / 2, (float)Win_HEIGHT / 2);
 				//close window
-				if (kb.Escape) {
+				if (keyboardController.getState().Escape) {
 					break;
 				}
-				//cameraRotation with arrow keys
-				float rotSpeed = 2 * deltaTime;
-				if (kb.Up) {
-					cameraRotation.x -= rotSpeed;
-				}
-				if (kb.Down) {
-					cameraRotation.x += rotSpeed;
-				}
-				if (kb.Left) {
-					cameraRotation.y -= rotSpeed;
-				}
-				if (kb.Right) {
-					cameraRotation.y += rotSpeed;
-				}
-				//clamp rotation
-				if (cameraRotation.x > (3.14 / 2)*0.9) cameraRotation.x = (3.14 / 2)*0.9;
-				if (cameraRotation.x < (-3.14 / 2)*0.9) cameraRotation.x = (-3.14 / 2)*0.9;
-				//calc rotation matrix to use later
-				float4x4 rotMat = float4x4::CreateRotationX(cameraRotation.x)*float4x4::CreateRotationY(cameraRotation.y);
-				cameraForward = XMVector3Transform(float4(0, 0, 1, 1), rotMat);
-				//camera movement
-				float speed = 1;
-				float jumpForce = 2;
-				float3 left = cameraForward.Cross(float3(0, 1, 0));
-				float3 forward = XMVector3Transform(float4(0, 0, 1, 1), float4x4::CreateRotationY(cameraRotation.y));
-				left.Normalize();
-				float3 movement(0, 0, 0);
-				if (kb.LeftShift) speed *= 2;//sprint
-				if (kb.W) {
-					movement += forward * speed;
-				}
-				if (kb.S) {
-					movement -= forward * speed;
-				}
-				if (kb.A) {
-					movement += left * speed;
-				}
-				if (kb.D) {
-					movement -= left * speed;
-				}
-				if (kb.Space && grounded) {//jump
-					velocity.y = jumpForce;
-					grounded = false;
-				}
-				if (!grounded)velocity += gravityDirection * gravityForce * deltaTime;//dont apply gravity if on ground
-				cameraPosition += movement * deltaTime + velocity * deltaTime;
-				//collision, only affects y-axis
-				float3 nextPos = cameraPosition + float3(0, -1, 0);
-				float hy = terrain.getHeightOfTerrainFromCoordinates(nextPos.x, nextPos.z);
-				if (nextPos.y < hy) {//if below terrain then add force up
-					cameraPosition.y += (hy - nextPos.y) * deltaTime * 5;
-					grounded = true;
-					velocity = float3(0, 0, 0);
-				}
-				else grounded = false;
-
+				//update player
+				player.updateRotation(mouseController.getMouseMovementThisFrame());
+				player.updateMovement(keyboardController.getState());
+				player.updateCollisionWithTerrain(&terrain);
 					// Toggle showcase effects
 				// Changes view mode between 1:st and 3:rd person
-				toggle(kb.V, gFirstPerson, gFirstPersonPressed);
+				toggle(keyboardController.getState().V, gFirstPerson, gFirstPersonPressed);
 				// Adds view frustum corners with closer far plane
-				if (toggle(kb.F,gShowFrustum,gShowFrustumPressed))
+				if (toggle(keyboardController.getState().F,gShowFrustum,gShowFrustumPressed))
 				{
 						for (int i = 0; i < 9; i++)
 						{
@@ -630,18 +677,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 
 				// Shows front to back by not rendering the closer objects
-				toggle(kb.B, gShowFrontToBack, gShowFrontToBackPressed);
+				toggle(keyboardController.getState().B, gShowFrontToBack, gShowFrontToBackPressed);
 				
 				// Use SSAO
-				toggle(kb.O, gShowSSAO, gShowSSAOPressed);
+				toggle(keyboardController.getState().O, gShowSSAO, gShowSSAOPressed);
 				
+				//update mouse (DO IT AFTER IT BEEN USED AND DO IT BEFORE RENDERING, if you do it efter the rendering the mouse movement will lag)
+				mouseController.update(&wndHandle);
+
 				//frustum balls
 				if(gShowFrustum)
-					updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
-				//rotate
-				rotation += deltaTime * XM_2PI*0.25*(1.0f / 4);
+					updateFrustumPoints(player.cameraPosition, player.cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
 				//update cameradata buffer
-				XMFLOAT4 cpD = XMFLOAT4(cameraPosition.x, cameraPosition.y, cameraPosition.z, 1);
+				XMFLOAT4 cpD = XMFLOAT4(player.cameraPosition.x, player.cameraPosition.y, player.cameraPosition.z, 1);
 				gDeviceContext->UpdateSubresource(gCameraBuffer, 0, 0, &cpD, 0, 0);
 
 				bool someObjectHasChanged = updateChangedObjects();
@@ -655,6 +703,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 					// Return viewport back to normal
 					SetViewport(Win_WIDTH, Win_HEIGHT);
 				}
+
 				//draw deferred maps
 				Render();
 				//draw deferred maps to full quad
@@ -668,7 +717,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				
 
 				//blur backBuffer
-				if (!kb.N) {
+				if (!keyboardController.getState().N) {
 					ID3D11Resource* r;
 					gBackbufferRTV->GetResource(&r);
 					textureBlurrer.blurTexture(r,20,Win_WIDTH,Win_HEIGHT);
@@ -676,10 +725,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 				gSwapChain->Present(0, 0); //9. Växla front- och back-buffer
 
+
+
+				//deltaTime
 				time = clock() - time;
 				deltaTime = (float)time / 1000.0f;
 			}
-			
 		}
 
 		CoUninitialize();
