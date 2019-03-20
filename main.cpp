@@ -111,6 +111,25 @@ bool gShowFrustum = false;
 bool gShowFrustumPressed = false;
 bool gShowFrontToBack = false;
 bool gShowFrontToBackPressed = false;
+bool gShowSSAO = true;
+bool gShowSSAOPressed = false;
+
+bool toggle(bool pressedKey, bool& showMode, bool& pressedBefore)
+{
+	bool successToggle = false;
+	if (pressedKey)
+	{
+		if (pressedBefore == false)
+		{
+			showMode = 1 - showMode;
+			pressedBefore = true;
+			successToggle = true;
+		}
+	}
+	else
+		pressedBefore = false;
+	return successToggle;
+}
 
 void SetViewport(float width, float height)
 {
@@ -223,7 +242,7 @@ void drawToShadowMap() {
 			objects[iObj].draw();
 		}
 
-		// If shadowmapping uses frustum culling there can be cases where the light is behind the player it might not show some shadows that should be there.
+		// If shadowmapping uses frustum culling there can be cases where when the light is behind the player it might not show some shadows that should be there.
 		//for (int iObj = 0; iObj < gIndexArray.length(); iObj++)
 		//{
 		//	lightManager.updateMatrixBuffer(objects[gIndexArray[iObj]].getWorldMatrix(), iLight);
@@ -581,46 +600,24 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				}
 				else grounded = false;
 
-				// Toggle showcase effects
+					// Toggle showcase effects
 				// Changes view mode between 1:st and 3:rd person
-				if (kb.V) 
-				{
-					if (gFirstPersonPressed == false) 
-					{
-						gFirstPerson = 1 - gFirstPerson;
-						gFirstPersonPressed = true;
-					}
-				}
-				else 
-					gFirstPersonPressed = false;
+				toggle(kb.V, gFirstPerson, gFirstPersonPressed);
 				// Adds view frustum corners with closer far plane
-				if (kb.F)
+				if (toggle(kb.F,gShowFrustum,gShowFrustumPressed))
 				{
-					if (gShowFrustumPressed == false)
-					{
-						gShowFrustum = 1 - gShowFrustum;
-						gShowFrustumPressed = true;
 						for (int i = 0; i < 9; i++)
 						{
 							objects[i].setPosition(float3(0, 0, 0));
 						}
-					}
 				}
-				else
-					gShowFrustumPressed = false;
 
 				// Shows front to back by not rendering the closer objects
-				if (kb.B)
-				{
-					if (gShowFrontToBackPressed == false)
-					{
-						gShowFrontToBack = 1 - gShowFrontToBack;
-						gShowFrontToBackPressed = true;
-					}
-				}
-				else
-					gShowFrontToBackPressed = false;
-
+				toggle(kb.B, gShowFrontToBack, gShowFrontToBackPressed);
+				
+				// Use SSAO
+				toggle(kb.O, gShowSSAO, gShowSSAOPressed);
+				
 				//frustum balls
 				if(gShowFrustum)
 					updateFrustumPoints(cameraPosition,cameraForward, viewData.up,viewData.fowAngle,viewData.aspectRatio, viewData.nearZ, 3);
