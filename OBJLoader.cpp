@@ -110,7 +110,7 @@ bool OBJLoader::loadMeshFromFile(string filename)
 				vertices_uv.appendIfNecessary(100000);
 				vertices_uv.add(uv);
 			}
-			else if (startWord == "f") {//face,convert to triangles
+			else if (startWord == "f") {//face
 				Array<VertexRef> face;
 				while (objFile.peek() != '\n' && objFile.peek() != EOF)
 				{

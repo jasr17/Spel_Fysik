@@ -32,43 +32,6 @@ Terrain terrain;
 
 LightManager lightManager;
 
-struct MousePicking {
-private:
-	float3 lookPos = float3(0, 0, 0);
-public:
-	float3 pointMouse(float3 worldLocation, float3 direction,float screenSpace_x, float screenSpace_y) {
-		//pos between -1 and 1
-		float SSxN = 2 * (screenSpace_x / (Win_WIDTH)) - 1;
-		float SSyN = -(2 * (screenSpace_y / (Win_HEIGHT)) - 1);
-		float4 vRayPos(0, 0, 0, 1);
-		float4 vRayDir(SSxN, SSyN, 1, 0);
-		vRayDir.Normalize();
-		//convert to world space
-		XMFLOAT3 at = worldLocation + direction;
-		XMFLOAT3 up(0, 1, 0);
-		float4x4 mInvView = ((float4x4)XMMatrixLookAtLH(XMLoadFloat3(&worldLocation), XMLoadFloat3(&at), XMLoadFloat3(&up))).Invert();
-		float4 wRayPos = XMVector4Transform(vRayPos, mInvView);
-		float4 wRayDir = XMVector4Transform(vRayDir, mInvView);
-		//check all objects
-		float t = -1;
-		for (int i = 0; i < objects.length(); i++)
-		{
-			float tt = objects[i].castRayOnObject(float3(wRayPos.x, wRayPos.y, wRayPos.z), float3(wRayDir.x, wRayDir.y, wRayDir.z));
-			if ((tt < t && tt > 0) || t < 0)t = tt;
-		}
-		//apply position
-		if (t > 0) {
-			float4 target = (wRayPos + wRayDir * t);
-			lookPos = float3(target.x, target.y, target.z);
-			return float3(target.x,target.y,target.z);
-		}
-		return float3(0,0,0);
-	}
-	float3 getPointLocation() {
-		return lookPos;
-	}
-} mousePicking;
-
 struct KeyboardController {
 private:
 	std::unique_ptr<DirectX::Keyboard> keyboard = std::make_unique<Keyboard>();
@@ -269,6 +232,48 @@ struct ViewData {
 		farZ = 20;
 	}
 }viewData;
+
+struct MousePicking {
+private:
+	float3 lookPos = float3(0, 0, 0);
+public:
+	float3 pointMouse(float3 worldLocation, float3 direction, float FOV, float aspectRatio, float screenSpace_x, float screenSpace_y) {
+		//pos between -1 and 1
+		float SSxN = 2 * (screenSpace_x / (Win_WIDTH)) - 1;
+		float SSyN = -(2 * (screenSpace_y / (Win_HEIGHT)) - 1);
+		//normalized width and height of frustum
+		float dy = sin(FOV/2);
+		float dx = dy * aspectRatio;
+		float dz = cos(FOV / 2);
+		//ray to point on screen
+		float4 vRayPos(0, 0, 0, 1);
+		float4 vRayDir(SSxN*dx, SSyN*dy, dz, 0);
+		vRayDir.Normalize();
+		//convert to world space
+		XMFLOAT3 at = worldLocation + direction;
+		XMFLOAT3 up(0, 1, 0);
+		float4x4 mInvView = ((float4x4)XMMatrixLookAtLH(XMLoadFloat3(&worldLocation), XMLoadFloat3(&at), XMLoadFloat3(&up))).Invert();
+		float4 wRayPos = XMVector4Transform(vRayPos, mInvView);
+		float4 wRayDir = XMVector4Transform(vRayDir, mInvView);
+		//check all objects
+		float t = -1;
+		for (int i = 0; i < objects.length(); i++)
+		{
+			float tt = objects[i].castRayOnObject(float3(wRayPos.x, wRayPos.y, wRayPos.z), float3(wRayDir.x, wRayDir.y, wRayDir.z));
+			if ((tt < t && tt > 0) || t < 0)t = tt;
+		}
+		//apply position
+		if (t > 0) {
+			float4 target = (wRayPos + wRayDir * t);
+			lookPos = float3(target.x, target.y, target.z);
+			return float3(target.x, target.y, target.z);
+		}
+		return float3(0, 0, 0);
+	}
+	float3 getPointLocation() {
+		return lookPos;
+	}
+} mousePicking;
 
 QuadTree gQuadTree(float3(0, 3, 0), float3(10, 3, 10), 5);
 Array<int> gIndexArray;  // Visible objects
@@ -664,8 +669,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				//deltaTime
 				time = clock();
 				//mousePicking
-				if (mouseController.getMouseState().leftButton == Mouse::ButtonStateTracker::PRESSED)
-					mousePicking.pointMouse(player.cameraPosition, player.cameraForward, (float)Win_WIDTH / 2, (float)Win_HEIGHT / 2);
+				if (mouseController.getMouseState().leftButton == Mouse::ButtonStateTracker::PRESSED) {
+					float2 mousePos = mouseController.getMousePosition();
+					POINT p; p.x = mousePos.x; p.y = mousePos.y;
+					ScreenToClient(wndHandle, &p);//get application screen coord
+					mousePicking.pointMouse(player.cameraPosition, player.cameraForward, viewData.fowAngle, viewData.aspectRatio, p.x,p.y);
+					
+				}
 				//close window
 				if (keyboardController.getState().Escape) {
 					break;
