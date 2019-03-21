@@ -9,17 +9,6 @@ private:
 	{
 		float3 mCenterPos;
 		float3 mHalfLength;
-
-		bool containsAABB(const AABB& other) // Kanske inte kommer användas, raderas sen då
-		{
-			bool isInside = true;
-			if (mCenterPos.x + mHalfLength.x < other.mCenterPos.x + other.mHalfLength.x || mCenterPos.x - mHalfLength.x > other.mCenterPos.x - other.mHalfLength.x) 
-				isInside = false;
-			else if (mCenterPos.z + mHalfLength.z < other.mCenterPos.z + other.mHalfLength.z || mCenterPos.z - mHalfLength.z > other.mCenterPos.z - other.mHalfLength.z) 
-				isInside = false;
-			return isInside;
-		}
-
 		bool intersectsAABB(const AABB& other)
 		{
 			bool intersects = true;
@@ -29,7 +18,6 @@ private:
 				intersects = false;
 			return intersects;
 		}
-
 		AABB(float3 pos, float3 halfLength)
 		{
 			mCenterPos = pos;
