@@ -37,6 +37,11 @@ void LightManager::bindMatrixBuffer()
 	gDeviceContext->VSSetConstantBuffers(0, 1, &matrixBuffer);
 }
 
+float2 LightManager::getSmapResolution(int index)
+{
+	return float2(shadowMapLights.lights[index].smapSize.x, shadowMapLights.lights[index].smapSize.y);
+}
+
 float4x4 LightManager::getLightViewMatrix(int index) const
 {
 	return matrixViews[index];
@@ -92,8 +97,6 @@ void LightManager::createBuffers()
 	// Create texture space
 	D3D11_TEXTURE2D_DESC texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
-	texDesc.Width = SMAP_WIDTH;
-	texDesc.Height = SMAP_HEIGHT;
 	texDesc.ArraySize = 1;
 	texDesc.MipLevels = 1;
 	texDesc.SampleDesc.Count = 1;
@@ -118,6 +121,10 @@ void LightManager::createBuffers()
 
 	for (int i = 0; i < lightCount(); i++)
 	{
+		// Put here for sizes may vary
+		texDesc.Width = shadowMapLights.lights[i].smapSize.x;
+		texDesc.Height = shadowMapLights.lights[i].smapSize.y;
+
 		hr = gDevice->CreateTexture2D(&texDesc, NULL, &pDepthBuffer);
 		hr = gDevice->CreateDepthStencilView(pDepthBuffer, &dsvd, &shadowMaps[i]);
 		hr = gDevice->CreateShaderResourceView(pDepthBuffer, &depthSRVDesc, &shaderResourceViewsDepth[i]);
@@ -130,16 +137,19 @@ int LightManager::lightCount() const
 	return (int)shadowMapLights.lightCount.x;
 }
 
-void LightManager::addLight(float3 position, float3 color, float intensity, float3 lookAt, float FOV, float nearPlane, float farPlane)
+void LightManager::addLight(float3 position, float3 color, float intensity, float3 lookAt, float FOV, float nearPlane, float farPlane, int smapWidth, int smapHeight)
 {
 	ShaderLight* l = &shadowMapLights.lights[lightCount()];
 	l->position = float4(position.x, position.y, position.z, 0);
 	l->color = float4(color.x, color.y, color.z, intensity);
+	l->smapSize = float4(smapWidth, smapHeight, 0, 0);
 	float4x4 mv = XMMatrixLookAtLH(position, lookAt, float3(0, 1, 0));
 	matrixViews[lightCount()] = mv;
-	XMMATRIX perspective = XMMatrixPerspectiveFovLH(FOV, (float)(SMAP_WIDTH) / (SMAP_HEIGHT), nearPlane, farPlane);
+	XMMATRIX perspective = XMMatrixPerspectiveFovLH(FOV, (float)(smapWidth) / (smapHeight), nearPlane, farPlane);
 	matrixPerspective[lightCount()] = perspective;
 	l->viewPerspectiveMatrix = XMMatrixTranspose(XMMatrixMultiply(mv, perspective));
+	
+
 	shadowMapLights.lightCount.x++;
 }
 

@@ -6,12 +6,12 @@ struct ShaderLight
 	float4 position;
 	float4 color; //.a is intensity
 	float4x4 viewPerspectiveMatrix;
+	float4 smapSize;
 };
 cbuffer lightBuffer			: register(b0)
 {
 	float4 lightCount;
 	ShaderLight lights[10];
-	float4 smapSize;  
 };
 cbuffer cameraBuffer		: register(b1)
 {
@@ -34,8 +34,8 @@ float checkShadowMap(float4 pos, int shadowMapIndex)
 	// sets coordinates from a [-1, 1] range to [0, 1]. Flips y since directx 0 starts on top
 	float2 uvCoord = float2(0.5f * pos.x + 0.5f, -0.5f * pos.y + 0.5f);
 
-	float2 mapSize = float2(smapSize.x, smapSize.y);
-	float2 dx = float2(1.0f / smapSize.x, 1.0f / smapSize.y); // size of one texel
+	float2 mapSize = float2(lights[shadowMapIndex].smapSize.x, lights[shadowMapIndex].smapSize.y);
+	float2 dx = float2(1.0f / lights[shadowMapIndex].smapSize.x, 1.0f / lights[shadowMapIndex].smapSize.y); // size of one texel
 	
 	float2 texelPos = uvCoord * mapSize; 
 	float2 lerps = frac(texelPos); // Position on the texel. Used in linear interpolation to judge weight of contributon

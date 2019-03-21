@@ -91,10 +91,7 @@ bool OBJLoader::loadMeshFromFile(string filename)
 			else if (startWord == "v") {//vertex position
 				float3 pos;
 				objFile >> pos.x >> pos.y >> pos.z;
-				if (vertices_position.appendIfNecessary(100000)) {
-					int k = 0;
-					k = 4;
-				}
+				vertices_position.appendIfNecessary(100000);
 				vertices_position.add(pos);
 			}
 			else if (startWord == "vn") {//normal

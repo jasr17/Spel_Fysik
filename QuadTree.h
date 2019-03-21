@@ -9,17 +9,6 @@ private:
 	{
 		float3 mCenterPos;
 		float3 mHalfLength;
-
-		bool containsAABB(const AABB& other) // Kanske inte kommer användas, raderas sen då
-		{
-			bool isInside = true;
-			if (mCenterPos.x + mHalfLength.x < other.mCenterPos.x + other.mHalfLength.x || mCenterPos.x - mHalfLength.x > other.mCenterPos.x - other.mHalfLength.x) 
-				isInside = false;
-			else if (mCenterPos.z + mHalfLength.z < other.mCenterPos.z + other.mHalfLength.z || mCenterPos.z - mHalfLength.z > other.mCenterPos.z - other.mHalfLength.z) 
-				isInside = false;
-			return isInside;
-		}
-
 		bool intersectsAABB(const AABB& other)
 		{
 			bool intersects = true;
@@ -29,7 +18,6 @@ private:
 				intersects = false;
 			return intersects;
 		}
-
 		AABB(float3 pos, float3 halfLength)
 		{
 			mCenterPos = pos;
@@ -76,16 +64,15 @@ private:
 	void getAllContentFromLeaves(Array<int>& indexArray);
 	void setUpPointsAndDiagonals();
 	void deleteObj(const Obj& obj);
-public:
 	QuadTree(const AABB& boundingBox, int nrOfPartitions);
-	QuadTree(float3 centerPos, float3 halfLengths, int nrOfPartitions);
+public:
+	QuadTree(float3 centerPos = float3(0, 0, 0), float3 halfLengths = float3(1, 1, 1), int nrOfPartitions = 4);
 	~QuadTree();
 
 	bool insertToRoot(const float3 centerPos, const float3 halfLength, const int index);
 	bool updateObj(const float3 centerPos, const float3 halfLength, const int index);
 	
-	void checkAgainstFrustum(Array<int>& indexArray, Frustum frustum);
-	
+	void checkAgainstFrustum(Array<int>& indexArray, Frustum frustum);	
 };
 
 QuadTree::QuadTree(const AABB& boundingBox, int nrOfPartitions)
@@ -98,10 +85,10 @@ QuadTree::QuadTree(const AABB& boundingBox, int nrOfPartitions)
 	setUpPointsAndDiagonals();
 }
 
-inline QuadTree::QuadTree(float3 centerPos = float3(0, 0, 0), float3 halfLengths = float3(1, 1, 1), int nrOfPartitions = 3)
+inline QuadTree::QuadTree(float3 centerPos , float3 halfLengths , int nrOfPartitions)
 	:QuadTree(AABB(centerPos, halfLengths), nrOfPartitions)
 {
-
+	mNrOfPartitions = max(4, nrOfPartitions);
 }
 
 QuadTree::~QuadTree()
@@ -139,48 +126,39 @@ inline bool QuadTree::insert(const Obj& obj)
 
 inline bool QuadTree::insertToRoot(const float3 centerPos, const float3 halfLength, const int index)
 {
-	bool returnValue = insert(Obj(centerPos, halfLength, index));
-
+	bool intersects = insert(Obj(centerPos, halfLength, index));
 	// Keeps old object for easy deleting when updating.
-	if (mNrOfPartitions != 0)
+	if (intersects)
 		mObjects.add(Obj(centerPos, halfLength, index));
 	   
-	return returnValue;
+	return intersects;
 }
 
 inline bool QuadTree::updateObj(const float3 centerPos, const float3 halfLength, const int index)
 {
 	Obj newObj(centerPos, halfLength, index);
 	int indexInArray = mObjects.find(newObj);
-	if (indexInArray != -1)
+	if (indexInArray != -1)  // If already in array
 	{
 		Obj oldObj = mObjects.get(indexInArray);
-		mObjects.set(indexInArray, newObj);
-		if (mNrOfPartitions != 0)
-		{
-			deleteObj(oldObj);
-			insert(newObj);
-		}
+	
+		deleteObj(oldObj);
+		if (insert(newObj))
+			mObjects.set(indexInArray, newObj);
+		else
+			mObjects.remove(indexInArray);
 	}
+	else 
+	{
+		insertToRoot(centerPos, halfLength, index);		//Intersection test happens in method
+	}
+
 	return indexInArray != -1;
 }
 
 inline void QuadTree::checkAgainstFrustum(Array<int>& indexArray, Frustum frustum)
 {
-	/*
-	if ( leaf)
-		if(intersects)
-			getContent
-
-	else if(contained)
-		getAllContent()
-
-	else if(intersects)
-		children.checkagainstFrustum()	
-	*/
-
 	int intersects = intersectsFrustum(frustum);
-
 
 	if (mChildren[0] == nullptr)
 	{
@@ -238,7 +216,7 @@ inline int QuadTree::intersectsFrustum(Frustum frustum)
 		}
 
 		// Distance taken from the length of a vector (from the plane to a point) projected onto the plane normal.
-		// Think the projection formula but without the resulting vector.
+		// Works like projection formula but without the resulting vector.
 		// Normals point inwards. 
 		float p = (mPoints[mostSimilarDiagonal * 2] - frustum.getPlane(iPlane).mPoint).Dot(frustum.getPlane(iPlane).mNormal);
 		float n = (mPoints[mostSimilarDiagonal * 2 + 1] - frustum.getPlane(iPlane).mPoint).Dot(frustum.getPlane(iPlane).mNormal);
@@ -310,7 +288,6 @@ inline void QuadTree::deleteObj(const Obj & obj)
 				mChildren[i]->deleteObj(obj);
 			}
 		}
-
 		else
 		{			
 			mObjects.remove(mObjects.find(obj));
