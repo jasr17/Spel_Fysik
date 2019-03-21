@@ -780,6 +780,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		CoUninitialize();
 
 		gMatrixBuffer->Release();
+		gShowDeferredMapsBuffer->Release();
+		gCameraBuffer->Release();
 
 		gDepthStencilView->Release();
 		gBackbufferRTV->Release();
