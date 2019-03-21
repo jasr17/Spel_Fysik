@@ -79,9 +79,17 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 	if (showcaseMap.x == 4) return position;
 	if (showcaseMap.x == 5) return specular;
 	if (showcaseMap.x == 6) return ssao;
-		
-
-
+	if (showcaseMap.x == 7)
+	{
+		if (input.uv.x < 0.5 && input.uv.y < 0.5)
+			return normalize(Textures[0].Sample(noiseSampler, input.uv * 2));
+		if (input.uv.x > 0.5 && input.uv.y < 0.5)
+			return Textures[1].Sample(noiseSampler, input.uv * 2);
+		if (input.uv.x < 0.5 && input.uv.y > 0.5)
+			return Textures[2].Sample(noiseSampler, input.uv * 2);
+		if (input.uv.x > 0.5 && input.uv.y > 0.5)
+			return Textures[3].Sample(noiseSampler, input.uv * 2);
+	}
 
 	float3 ambient = float3(0.2, 0.2, 0.2);
     float3 finalColor = color.xyz * ambient *ssao;

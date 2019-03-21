@@ -723,6 +723,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				if (keyboardController.getState().D4) showDeferredMap.x = 4;
 				if (keyboardController.getState().D5) showDeferredMap.x = 5;
 				if (keyboardController.getState().D6) showDeferredMap.x = 6;
+				if (keyboardController.getState().D7) showDeferredMap.x = 7;
 
 				if(showDeferredMap.x != 0)
 					gDeviceContext->UpdateSubresource(gShowDeferredMapsBuffer, 0, 0, &showDeferredMap, 0, 0);
