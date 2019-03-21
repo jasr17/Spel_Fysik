@@ -35,6 +35,9 @@ LightManager lightManager;
 struct KeyboardController {
 private:
 	std::unique_ptr<DirectX::Keyboard> keyboard = std::make_unique<Keyboard>();
+	~KeyboardController(){
+		keyboard.release();
+	}
 public:
 	Keyboard* getKeyboard() {
 		return keyboard._Myptr();
@@ -63,6 +66,9 @@ private:
 	void updateMouseState() {
 		Mouse::State state = mouse->GetState();
 		mouseTracker.Update(state);
+	}
+	~MouseController() {
+		mouse.release();
 	}
 public:
 	void setWindow(HWND* _wndHandle) {
