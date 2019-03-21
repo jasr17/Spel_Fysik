@@ -239,6 +239,7 @@ ID3D11DepthStencilView* gDepthStencilView = nullptr;
 // a resource to store the matrix in the GPU
 ID3D11Buffer* gMatrixBuffer = nullptr;
 ID3D11Buffer* gCameraBuffer = nullptr;
+ID3D11Buffer* gShowDeferredMapsBuffer = nullptr;
 
 ShaderSet shader_object;
 ShaderSet shader_terrain;
@@ -336,6 +337,10 @@ void CreateCameraBuffer() {
 
 	gDevice->CreateBuffer(&desc, nullptr, &gCameraBuffer);
 	gDeviceContext->PSSetConstantBuffers(1, 1, &gCameraBuffer);
+
+	//gShowDeferredMapsBuffer
+	gDevice->CreateBuffer(&desc, nullptr, &gShowDeferredMapsBuffer);
+	gDeviceContext->PSSetConstantBuffers(6, 1, &gShowDeferredMapsBuffer);
 }
 
 void updateMatrixBuffer(float4x4 worldMat) { // Lägg till så camPos o camForward är parametrar
@@ -694,6 +699,18 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				// Show Blurring
 				toggle(keyboardController.getState().N, gShowEdgeBlurr);
 				toggle(keyboardController.getState().H, gShowFullBlurr);
+
+				float4 showDeferredMap = float4(0, 0, 0, 0);
+				if (keyboardController.getState().D1) showDeferredMap.x = 1;
+				if (keyboardController.getState().D2) showDeferredMap.x = 2;
+				if (keyboardController.getState().D3) showDeferredMap.x = 3;
+				if (keyboardController.getState().D4) showDeferredMap.x = 4;
+				if (keyboardController.getState().D5) showDeferredMap.x = 5;
+				if (keyboardController.getState().D6) showDeferredMap.x = 6;
+
+				if(showDeferredMap.x != 0)
+					gDeviceContext->UpdateSubresource(gShowDeferredMapsBuffer, 0, 0, &showDeferredMap, 0, 0);
+
 
 				//update mouse (DO IT AFTER IT BEEN USED AND DO IT BEFORE RENDERING, if you do it efter the rendering the mouse movement will lag)
 				mouseController.update(&wndHandle);

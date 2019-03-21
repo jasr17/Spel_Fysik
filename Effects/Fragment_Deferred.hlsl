@@ -16,7 +16,11 @@ cbuffer lightBuffer			: register(b0)
 cbuffer cameraBuffer		: register(b1)
 {
 	float4 camPos;
-}
+};
+cbuffer showcaseDeferredMaps : register(b6)
+{
+	float4 showcaseMap; // only uses x
+};
 
 //Texturer/samplers
 Texture2D Textures[5]		: register(t0);
@@ -68,6 +72,16 @@ float4 PS_main(in PS_IN input) : SV_TARGET
 	float4 position = Textures[2].Sample(AnisoSampler, input.uv);
     float4 specular = Textures[3].Sample(AnisoSampler, input.uv);
 	float ssao = SSAO.Sample(AnisoSampler, input.uv).x;
+
+	// Used to showcase the deferred maps
+	if (showcaseMap.x == 2) return normal;
+	if (showcaseMap.x == 3) return color;
+	if (showcaseMap.x == 4) return position;
+	if (showcaseMap.x == 5) return specular;
+	if (showcaseMap.x == 6) return ssao;
+		
+
+
 
 	float3 ambient = float3(0.2, 0.2, 0.2);
     float3 finalColor = color.xyz * ambient *ssao;
