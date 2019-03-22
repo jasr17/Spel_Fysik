@@ -1,5 +1,7 @@
 #include "Mesh.h"
 
+ID3D11Buffer* Mesh::materialBuffer = nullptr;
+
 float Mesh::triangleTest(float3 rayDir, float3 rayOrigin, float3 tri0, float3 tri1, float3 tri2) {
 	float3 normal = ((tri1 - tri0).Cross(tri2 - tri0)); normal.Normalize();
 	float3 toTri = rayOrigin - tri0; toTri.Normalize();
@@ -73,21 +75,24 @@ void Mesh::createBuffers()
 	memset(&bufferDesc, 0, sizeof(bufferDesc));
 
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
 	bufferDesc.ByteWidth = mesh.byteSize();
 
 	D3D11_SUBRESOURCE_DATA data;
 	data.pSysMem = mesh.getArrayPointer();
 
 	check = gDevice->CreateBuffer(&bufferDesc, &data, &vertexBuffer);
-	//material buffer
-	D3D11_BUFFER_DESC desc;
-	memset(&desc, 0, sizeof(desc));
-	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.ByteWidth = sizeof(Material);
 
-	check = gDevice->CreateBuffer(&desc, nullptr, &materialBuffer);
+	//material buffer
+	if (materialBuffer == nullptr) {
+		D3D11_BUFFER_DESC desc;
+		memset(&desc, 0, sizeof(desc));
+		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.ByteWidth = sizeof(Material);
+
+		check = gDevice->CreateBuffer(&desc, nullptr, &materialBuffer);
+	}
 	//textureBuffer
 	maps = new ID3D11ShaderResourceView**[materials.length()];
 	for (size_t i = 0; i < materials.length(); i++)
@@ -150,17 +155,20 @@ void Mesh::draw()
 	gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	//gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
-	for (int i = 0; i < meshPartSize.length(); i++)
+	int startVert = 0;
+	for (int i = 0; i < meshPartInfo.length(); i++)
 	{
-		int startVert = 0;
-		for (int j = 0; j < i; j++)
-			startVert += meshPartSize[j];
+		for (int k = 0; k < meshPartInfo[i].length(); k++)
+		{
+			int materialIndex = meshPartInfo[i].getMaterialIndex(k);
+			gDeviceContext->UpdateSubresource(materialBuffer, 0, 0, &materials[materialIndex].material, 0, 0);
 
-		gDeviceContext->UpdateSubresource(materialBuffer, 0, 0, &materials[i].material, 0, 0);
+			gDeviceContext->PSSetShaderResources(0, 3, maps[materialIndex]);
 
-		gDeviceContext->PSSetShaderResources(0, 3, maps[i]);
+			gDeviceContext->Draw(meshPartInfo[i].getVertexCount(k), startVert);
 
-		gDeviceContext->Draw(meshPartSize[i], startVert);
+			startVert += meshPartInfo[i].getVertexCount(k);
+		}
 	}
 }
 float3 Mesh::getBoundingBoxPos() const
@@ -175,7 +183,7 @@ bool Mesh::loadMesh(string OBJFile, typeOfShading ToS)
 {
 	if (!loader.loadFromFile(OBJFile)) {
 		if (ToS == typeOfShading::smoothShading)loader.averagePointTriangleNormals();
-		mesh = loader.createTriangularMesh(meshPartSize);
+		mesh = loader.createTriangularMesh(meshPartInfo);
 		findMinMaxValues();
 		loader.getMaterialParts(materials);
 		loader.reset();
