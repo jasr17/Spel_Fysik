@@ -127,7 +127,6 @@
     <FxCompile Include="Effects\Fragment_SSAO.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>
-    <FxCompile Include="SSAO_Blur.hlsl" />
     <FxCompile Include="GaussianHorizontalEdgeBlur.hlsl">
       <Filter>Effects</Filter>
     </FxCompile>

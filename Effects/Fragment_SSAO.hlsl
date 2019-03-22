@@ -40,15 +40,16 @@ float occlusion(in float3x3 tbn, in float4 viewPos)
 	{
 		float3 currentSample = mul(kernels[i].xyz,tbn);
 		currentSample = viewPos.xyz + currentSample * RADIUS;
-
-		float4 offSet = float4(currentSample, 1);
-		offSet = mul(offSet, mProjectionMatrix);
-		offSet.xy /= offSet.w;
-		float2 uvCoord = float2(0.5f * offSet.x + 0.5f, -0.5f * offSet.y + 0.5f);
-
+		
+		//Transform current sample to screen space and sample it.
+		float4 sampleInScreenSpace = float4(currentSample, 1);
+		sampleInScreenSpace = mul(sampleInScreenSpace, mProjectionMatrix);
+		sampleInScreenSpace.xy /= sampleInScreenSpace.w;
+		float2 uvCoord = float2(0.5f * sampleInScreenSpace.x + 0.5f, -0.5f * sampleInScreenSpace.y + 0.5f);
 		float sampleDepth = Textures[4].Sample(AnisoSampler, uvCoord).z;
+
 		float rangeCheck = abs(currentSample.z - sampleDepth) < RADIUS ? 1.0 : 0.5;
-		occlusion += (sampleDepth < offSet.z + BIAS ? 1.0 : 0.0)*rangeCheck;
+		occlusion += (sampleDepth < sampleInScreenSpace.z + BIAS ? 1.0 : 0.0)*rangeCheck;
 	}
 	occlusion =  1-(occlusion / nrOfKernels.x);
 
@@ -69,7 +70,6 @@ struct PS_OUT
 float4 PS_main(in PS_IN input) : SV_Target
 {
 	float4 normal = normalize(Textures[0].Sample(AnisoSampler, input.uv));
-	float4 position = Textures[2].Sample(AnisoSampler, input.uv);
 	float4 viewPos = Textures[4].Sample(AnisoSampler, input.uv);
 	float4 randomVec = Noise.Sample(noiseSampler, input.uv*float2(240,135));
 

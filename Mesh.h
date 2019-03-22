@@ -12,12 +12,12 @@ private:
 	float2 MinMaxXPosition = float2(-1, -1);//.x is min, .y is max
 	float2 MinMaxYPosition = float2(-1, -1);
 	float2 MinMaxZPosition = float2(-1, -1);
-	Array<int> meshPartSize;
+	Array<PartInfo> meshPartInfo;
 	Array<Vertex> mesh;
 	Array<MaterialPart> materials;
 	//buffers
 	ID3D11Buffer* vertexBuffer = nullptr;
-	ID3D11Buffer* materialBuffer = nullptr;
+	static ID3D11Buffer* materialBuffer;
 	ID3D11ShaderResourceView*** maps = nullptr;
 	//functions
 	std::wstring s2ws(const std::string& s)
