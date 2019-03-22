@@ -573,7 +573,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		meshes.add(Mesh()); meshCheck = meshes[4].loadMesh("Meshes/rock1", smoothShading);
 		meshes.add(Mesh()); meshCheck = meshes[5].loadMesh("Meshes/pineTree", smoothShading);
 		meshes.add(Mesh()); meshCheck = meshes[6].loadMesh("Meshes/cottage", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[7].loadMesh("Meshes/Storage", flatShading);
 
 		float3 s = terrain.getTerrainSize();
 		float3 scale(0.05,0.05,0.05);
@@ -591,7 +590,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			frustumCube.giveMesh(&meshes[2]);
 			objects.add(frustumCube);
 		}
-
 		
 		int nrOfItemsToAdd = 100;
 

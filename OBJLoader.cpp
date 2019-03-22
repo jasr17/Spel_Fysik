@@ -137,9 +137,9 @@ bool OBJLoader::loadMeshFromFile(string filename)
 			}
 		}
 		objFile.close();
-		return false;
+		return true;
 	}
-	return true;
+	return false;
 }
 
 bool OBJLoader::loadMaterialFromFile(string filename)
@@ -198,22 +198,22 @@ bool OBJLoader::loadMaterialFromFile(string filename)
 				mtlFile.getline(c, 100);
 			}
 		}
-		return false;
+		return true;
 	}
-	return true;
+	return false;
 }
 
 bool OBJLoader::loadFromFile(string filename)
 {
-	if (!loadMeshFromFile(filename + ".obj"))
+	if (loadMeshFromFile(filename + ".obj"))
 	{
 		loaded = true;
 		materials.reset();
-		bool check = false;
+		bool check = true;
 		for (int i = 0; i < materialFileNames.length(); i++)
 		{
-			if (loadMaterialFromFile(materialFileNames[i]))
-				check = true;
+			if (!loadMaterialFromFile(materialFileNames[i]))
+				check = false;
 		}
 		return check;
 	}

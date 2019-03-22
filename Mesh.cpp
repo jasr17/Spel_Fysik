@@ -1,6 +1,7 @@
 #include "Mesh.h"
 
 ID3D11Buffer* Mesh::materialBuffer = nullptr;
+int* Mesh::meshCount = new int(0);
 
 float Mesh::triangleTest(float3 rayDir, float3 rayOrigin, float3 tri0, float3 tri1, float3 tri2) {
 	float3 normal = ((tri1 - tri0).Cross(tri2 - tri0)); normal.Normalize();
@@ -127,7 +128,7 @@ void Mesh::freeBuffers()
 		vertexBuffer->Release();
 		vertexBuffer = nullptr;
 	}
-	if (materialBuffer != nullptr) {
+	if (materialBuffer != nullptr && meshCount == 0) {
 		materialBuffer->Release();
 		materialBuffer = nullptr;
 	}
@@ -181,17 +182,17 @@ float3 Mesh::getBoundingBoxSize() const
 }
 bool Mesh::loadMesh(string OBJFile, typeOfShading ToS)
 {
-	if (!loader.loadFromFile(OBJFile)) {
+	if (loader.loadFromFile(OBJFile)) {
 		if (ToS == typeOfShading::smoothShading)loader.averagePointTriangleNormals();
 		mesh = loader.createTriangularMesh(meshPartInfo);
 		findMinMaxValues();
 		loader.getMaterialParts(materials);
 		loader.reset();
 		createBuffers();
-		return false;
+		return true;
 	}
 	else {
-		return true;
+		return false;
 		//Error loading file
 	}
 }
@@ -220,10 +221,12 @@ float Mesh::castRayOnMesh(float3 rayPos, float3 rayDir)
 }
 Mesh::Mesh(string OBJFile, typeOfShading ToS)
 {
+	meshCount++;
 	if (OBJFile != "")loadMesh(OBJFile, ToS);
 }
 Mesh::~Mesh()
 {
+	meshCount--;
 	freeBuffers();
 }
 

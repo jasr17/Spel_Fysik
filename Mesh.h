@@ -18,6 +18,7 @@ private:
 	//buffers
 	ID3D11Buffer* vertexBuffer = nullptr;
 	static ID3D11Buffer* materialBuffer;
+	static int* meshCount;
 	ID3D11ShaderResourceView*** maps = nullptr;
 	//functions
 	std::wstring s2ws(const std::string& s)

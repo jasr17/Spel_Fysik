@@ -2,7 +2,7 @@
 #include"TextureBlurrer.h"
 #include"standardClasses.h"
 const int SSAO_TEXTURE_SLOT = 5;
-const int KERNELSIZE = 16;
+const int KERNELSIZE = 4;
 const int NOISESIZE = 8;
 class SSAO
 {
