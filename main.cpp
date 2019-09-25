@@ -11,7 +11,6 @@
 #include <Mouse.h>
 
 #include "Object.h"
-#include "Terrain.h"
 #include "LightManager.h"
 #include "Deferred.h"
 #include "QuadTree.h"
@@ -27,8 +26,6 @@ Array<Object> objects;
 
 Object cube;
 Object sphere;
-
-Terrain terrain;
 
 LightManager lightManager;
 
@@ -113,7 +110,7 @@ struct Player {
 private:
 	//player variables
 	bool grounded = false;
-	float gravityForce = 3;
+	float gravityForce = 0;
 	float3 gravityDirection = float3(0, -1, 0);
 	float3 acceleration = float3(0, 0, 0);
 	float3 velocity = float3(0, 0, 0);
@@ -164,17 +161,7 @@ public:
 		if (!grounded)velocity += gravityDirection * gravityForce * deltaTime;//dont apply gravity if on ground
 		cameraPosition += movement * deltaTime + velocity * deltaTime;
 	}
-	void updateCollisionWithTerrain(Terrain* _terrain) {
-		//collision, only affects y-axis
-		float3 nextPos = cameraPosition + float3(0, -1, 0);
-		float hy = _terrain->getHeightOfTerrainFromCoordinates(nextPos.x, nextPos.z);
-		if (nextPos.y < hy) {//if below terrain then add force up
-			cameraPosition.y += (hy - nextPos.y) * deltaTime * 5;
-			grounded = true;
-			velocity = float3(0, 0, 0);
-		}
-		else grounded = false;
-	}
+	
 } player;
 
 struct Toggle {
@@ -211,7 +198,6 @@ ID3D11Buffer* gCameraBuffer = nullptr;
 ID3D11Buffer* gShowDeferredMapsBuffer = nullptr;
 
 ShaderSet shader_object;
-ShaderSet shader_terrain;
 ShaderSet shader_object_onlyMesh;
 ShaderSet gShader_Deferred;
 
@@ -401,10 +387,10 @@ void drawToShadowMap() {
 			lightManager.updateMatrixBuffer(objects[iObj].getWorldMatrix(), iLight);
 			objects[iObj].draw();
 		}
-
-		//terrain
-		lightManager.updateMatrixBuffer(terrain.getWorldMatrix(), iLight);
-		terrain.draw();
+		
+		//Water
+		//lightManager.updateMatrixBuffer(terrain.getWorldMatrix(), iLight);
+		//terrain.draw();
 	}
 	// Return viewport back to normal
 	SetViewport(Win_WIDTH, Win_HEIGHT);
@@ -506,7 +492,6 @@ void Render() {
 	{
 		updateMatrixBuffer(objects[sortedIndexArray[i]].getWorldMatrix());
 		objects[sortedIndexArray[i]].draw();
-		//drawBoundingBox(objects[sortedIndexArray[i]]);
 	}
 
 	
@@ -526,11 +511,8 @@ void Render() {
 	sphere.setPosition(mousePicking.getPointLocation());
 	updateMatrixBuffer(sphere.getWorldMatrix());
 	sphere.draw();
-	//terrain
+	
 	lightManager.bindShaderResourceDepthViews();
-	shader_terrain.bindShadersAndLayout();
-	updateMatrixBuffer(terrain.getWorldMatrix());
-	terrain.draw();
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
@@ -560,28 +542,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		creationCheck = textureBlurrer.initilize(DXGI_FORMAT_R8G8B8A8_UNORM, L"GaussianHorizontalBlur.hlsl", L"GaussianVerticalBlur.hlsl");
 		
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
-		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50, Win_WIDTH, Win_HEIGHT);
+		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 5, float3(0, 0, 0), XM_PI*0.45, 0.01, 50, Win_WIDTH, Win_HEIGHT);
 		//lightManager.addLight(float3(-7, 10, 7), float3(1, 0.9, 0.7), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50);
 		lightManager.createBuffers();
-
-		terrain.create(XMINT2(500, 500), 15, 5, L"Images/heightMap2.png", smoothShading);
-
+		
 		//meshes. Add all meshes that will be in the game.
 		//2 options in loadMesh, "flatShading" and "smoothShading"
 
 		meshes.appendCapacity(100);//CANNOT COPY MESH OBJECT
 		bool meshCheck;
 
-		meshes.add(Mesh()); meshCheck = meshes[0].loadMesh("Meshes/Sphere", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[1].loadMesh("Meshes/Cube", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[2].loadMesh("Meshes/Boat", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[3].loadMesh("Meshes/Water", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[4].loadMesh("Meshes/Motor", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[5].loadMesh("Meshes/Cannon_Stand", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[6].loadMesh("Meshes/Cannon_Part", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[7].loadMesh("Meshes/Sword", smoothShading);
+		enum meshIndex { meshSphere, meshCube, meshBoat, meshWater, meshMotor, meshCannonStand, meshCannonPart };
+		meshes.add(Mesh()); meshCheck = meshes[meshSphere].loadMesh("Meshes/Sphere", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[meshCube].loadMesh("Meshes/Cube", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[meshBoat].loadMesh("Meshes/Boat", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[meshWater].loadMesh("Meshes/Water", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[meshMotor].loadMesh("Meshes/Motor", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[meshCannonStand].loadMesh("Meshes/Cannon_Stand", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[meshCannonPart].loadMesh("Meshes/Cannon_Part", flatShading);
 
-		float3 s = terrain.getTerrainSize();
+		//float3 s = terrain.getTerrainSize();
 		float3 scale(1,1,1);
 		
 		objects.appendCapacity(1000);
@@ -594,7 +574,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			if(i == 0) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0);
 			else if(i>4) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0.1);
 			
-			frustumCube.giveMesh(&meshes[1]);
+			frustumCube.giveMesh(&meshes[meshCube]);
 			objects.add(frustumCube);
 		}
 		
@@ -603,60 +583,58 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		for (int i = 0; i < 0; i++)
 		{
 			Object boat = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(random(-10,10), 0, random(-10, 10)),
 				float3(0, random(0, 3.14 * 2), 0),
 				scale*5,
-				&meshes[2]);
+				&meshes[meshBoat]);
 			objects.add(boat);
 		}
 		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object motor = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(random(-10, 10), 0, random(-10, 10)),
 				float3(0, random(0, 3.14 * 2), 0),
 				scale,
-				&meshes[4]
+				&meshes[meshMotor]
 			);
 			objects.add(motor);
 		}
 		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object stand = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(random(-10, 10), 0, random(-10, 10)),
 				float3(0, random(0, 3.14 * 2), 0),
 				scale,
-				&meshes[5]
+				&meshes[meshCannonStand]
 			);
 			objects.add(stand);
 		}
 		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object cannon = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(random(-10, 10), 0, random(-10, 10)), 
 				float3(0, random(0, 3.14 * 2), 0),
 				scale,
-				&meshes[6]
+				&meshes[meshCannonPart]
 			);
 			objects.add(cannon);
 		}
 
-		for (int i = 0; i < nrOfItemsToAdd; i++)
-		{
-			Object cannon = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
-				float3(0, random(0, 3.14 * 2), 0),
-				scale,
-				&meshes[5]
-			);
-			objects.add(cannon);
-		}
+
+		Object water = Object(
+			float3(0, 0, 0),
+			float3(0, 0, 0),
+			scale*5,
+			&meshes[meshWater]
+		);
+		objects.add(water);
+
 		
 		sphere.giveMesh(&meshes[0]);	// Used as sun/lights
 		cube.giveMesh(&meshes[1]);		// Used for drawBoundingBox function
 
 		shader_object.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment.hlsl");
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
-		shader_terrain.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_Terrain.hlsl");
 		gShader_Deferred.createShaders(L"Effects/Vertex_Deferred.hlsl", nullptr, L"Effects/Fragment_Deferred.hlsl");
 		
 		ShaderSet shader_SSAO;
@@ -706,7 +684,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				//update player
 				player.updateRotation(mouseController.getMouseMovementThisFrame());
 				player.updateMovement(keyboardController.getState());
-				player.updateCollisionWithTerrain(&terrain);
+				//player.updateCollisionWithTerrain(&terrain);
 
 					// Toggle showcase effects
 				// Changes view mode between 1:st and 3:rd person
