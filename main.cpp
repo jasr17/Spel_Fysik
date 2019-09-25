@@ -580,12 +580,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		
 		int nrOfItemsToAdd = 10;
 
-		for (int i = 0; i < 0; i++)
+			// 
+		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
 			Object boat = Object(
-				float3(random(-10,10), 0, random(-10, 10)),
+				float3(random(-10,10), 0.1f, random(-10, 10)),
 				float3(0, random(0, 3.14 * 2), 0),
-				scale*5,
+				scale,
 				&meshes[meshBoat]);
 			objects.add(boat);
 		}
