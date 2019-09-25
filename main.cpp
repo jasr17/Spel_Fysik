@@ -506,7 +506,10 @@ void Render() {
 	{
 		updateMatrixBuffer(objects[sortedIndexArray[i]].getWorldMatrix());
 		objects[sortedIndexArray[i]].draw();
+		//drawBoundingBox(objects[sortedIndexArray[i]]);
 	}
+
+	
 
 	//lights
 	shader_object_onlyMesh.bindShadersAndLayout();
@@ -558,25 +561,29 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		
 		lightManager.createShaderForShadowMap(L"Effects/Vertex_Light.hlsl", nullptr, nullptr);
 		lightManager.addLight(float3(7, 10, 7), float3(1, 1, 1), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50, Win_WIDTH, Win_HEIGHT);
-		lightManager.addLight(float3(-7, 10, 7), float3(1, 0.9, 0.7), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50);
+		//lightManager.addLight(float3(-7, 10, 7), float3(1, 0.9, 0.7), 1, float3(0, 0, 0), XM_PI*0.45, 0.01, 50);
 		lightManager.createBuffers();
 
 		terrain.create(XMINT2(500, 500), 15, 5, L"Images/heightMap2.png", smoothShading);
 
-		//meshes
+		//meshes. Add all meshes that will be in the game.
+		//2 options in loadMesh, "flatShading" and "smoothShading"
+
 		meshes.appendCapacity(100);//CANNOT COPY MESH OBJECT
 		bool meshCheck;
-		meshes.add(Mesh()); meshCheck = meshes[0].loadMesh("Meshes/Sword", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[1].loadMesh("Meshes/sphere", smoothShading);
-		meshes.add(Mesh()); meshCheck = meshes[2].loadMesh("Meshes/cube", flatShading);
-		meshes.add(Mesh()); meshCheck = meshes[3].loadMesh("Meshes/tree1", smoothShading);
-		meshes.add(Mesh()); meshCheck = meshes[4].loadMesh("Meshes/rock1", smoothShading);
-		meshes.add(Mesh()); meshCheck = meshes[5].loadMesh("Meshes/pineTree", smoothShading);
-		meshes.add(Mesh()); meshCheck = meshes[6].loadMesh("Meshes/cottage", flatShading);
+
+		meshes.add(Mesh()); meshCheck = meshes[0].loadMesh("Meshes/Sphere", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[1].loadMesh("Meshes/Cube", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[2].loadMesh("Meshes/Boat", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[3].loadMesh("Meshes/Water", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[4].loadMesh("Meshes/Motor", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[5].loadMesh("Meshes/Cannon_Stand", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[6].loadMesh("Meshes/Cannon_Part", flatShading);
+		meshes.add(Mesh()); meshCheck = meshes[7].loadMesh("Meshes/Sword", smoothShading);
 
 		float3 s = terrain.getTerrainSize();
-		float3 scale(0.05,0.05,0.05);
-		scale *= 2;
+		float3 scale(1,1,1);
+		
 		objects.appendCapacity(1000);
 
 		// Frustum cubes to more easily see the frustum
@@ -587,56 +594,65 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 			if(i == 0) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0);
 			else if(i>4) frustumCube.setScale(float3(0.2, 0.2, 0.2)*0.1);
 			
-			frustumCube.giveMesh(&meshes[2]);
+			frustumCube.giveMesh(&meshes[1]);
 			objects.add(frustumCube);
 		}
 		
-		int nrOfItemsToAdd = 100;
+		int nrOfItemsToAdd = 10;
 
 		for (int i = 0; i < 0; i++)
 		{
-			Object swd = Object(
+			Object boat = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
 				scale*5,
-				&meshes[0]);
-			objects.add(swd);
+				&meshes[2]);
+			objects.add(boat);
 		}
 		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
-			Object tree = Object(
-				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
-				float3(0, random(0, 3.14 * 2), 0),
-				scale,
-				&meshes[3]
-			);
-			objects.add(tree);
-		}
-		for (int i = 0; i < nrOfItemsToAdd; i++)
-		{
-			Object rock = Object(
+			Object motor = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
 				scale,
 				&meshes[4]
 			);
-			objects.add(rock);
+			objects.add(motor);
 		}
 		for (int i = 0; i < nrOfItemsToAdd; i++)
 		{
-			Object pineTree = Object(
+			Object stand = Object(
 				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
 				float3(0, random(0, 3.14 * 2), 0),
 				scale,
 				&meshes[5]
 			);
-			objects.add(pineTree);
+			objects.add(stand);
 		}
-		//House
-		objects.add(Object(terrain.getPointOnTerrainFromCoordinates(5,5), float3(0, 3.14, 0), scale*2, &meshes[6]));
+		for (int i = 0; i < nrOfItemsToAdd; i++)
+		{
+			Object cannon = Object(
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(0, random(0, 3.14 * 2), 0),
+				scale,
+				&meshes[6]
+			);
+			objects.add(cannon);
+		}
 
-		sphere.giveMesh(&meshes[1]);
-		cube.giveMesh(&meshes[2]);
+		for (int i = 0; i < nrOfItemsToAdd; i++)
+		{
+			Object cannon = Object(
+				terrain.getPointOnTerrainFromCoordinates(random(-terrain.getTerrainSize().x / 2, terrain.getTerrainSize().x / 2), random(-terrain.getTerrainSize().z / 2, terrain.getTerrainSize().z / 2)),
+				float3(0, random(0, 3.14 * 2), 0),
+				scale,
+				&meshes[5]
+			);
+			objects.add(cannon);
+		}
+		
+		sphere.giveMesh(&meshes[0]);	// Used as sun/lights
+		cube.giveMesh(&meshes[1]);		// Used for drawBoundingBox function
 
 		shader_object.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment.hlsl");
 		shader_object_onlyMesh.createShaders(L"Effects/Vertex.hlsl", nullptr, L"Effects/Fragment_onlyMesh.hlsl");
