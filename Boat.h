@@ -10,7 +10,7 @@ private:
 	float3 mCannonStandAnchor;
 	float mSpeed;
 
-
+	void calculateThust();
 public:
 	Boat(Mesh* mesh);
 	Boat();

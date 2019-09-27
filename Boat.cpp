@@ -2,6 +2,10 @@
 
 
 
+void Boat::calculateThust()
+{
+}
+
 Boat::Boat(Mesh* mesh)
 {
 	mBoat.giveMesh(mesh);

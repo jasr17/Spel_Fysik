@@ -694,25 +694,25 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 
 				// Controll boat
-				float3 left;// = cameraForward.Cross(float3(0, 1, 0));
-				
-				float3 forward = XMVector3Transform(float4(0, 0, 1, 1), float4x4::CreateRotationY(cameraRotation.y));
-				left.Normalize();
-				float3 movement(0, 0, 0);
-				if (keyboardState.LeftShift) speed *= 2;//sprint
-				if (keyboardState.W) {
-					movement += forward * speed;
-				}
-				if (keyboardState.S) {
-					movement -= forward * speed;
-				}
-				if (keyboardState.A) {
-					movement += left * speed;
-				}
-				if (keyboardState.D) {
-					movement -= left * speed;
-				}
-
+				//float3 left;// = cameraForward.Cross(float3(0, 1, 0));
+				//
+				//float3 forward = XMVector3Transform(float4(0, 0, 1, 1), float4x4::CreateRotationY(cameraRotation.y));
+				//left.Normalize();
+				//float3 movement(0, 0, 0);
+				//if (keyboardState.LeftShift) speed *= 2;//sprint
+				//if (keyboardState.W) {
+				//	movement += forward * speed;
+				//}
+				//if (keyboardState.S) {
+				//	movement -= forward * speed;
+				//}
+				//if (keyboardState.A) {
+				//	movement += left * speed;
+				//}
+				//if (keyboardState.D) {
+				//	movement -= left * speed;
+				//}
+				//
 
 
 					// Toggle showcase effects
