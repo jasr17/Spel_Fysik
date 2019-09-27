@@ -16,13 +16,15 @@
 #include "QuadTree.h"
 #include "TextureBlurrer.h"
 #include "FrontToBack.h"
+#include "Boat.h"
 
 const int DEF_BUFFERCOUNT = 3;
 
 float deltaTime = 0;
-
+//någon ändring
 Array<Mesh> meshes;
 Array<Object> objects;
+Boat gBoat;
 
 Object cube;
 Object sphere;
@@ -561,12 +563,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		meshes.add(Mesh()); meshCheck = meshes[meshCannonStand].loadMesh("Meshes/Cannon_Stand", flatShading);
 		meshes.add(Mesh()); meshCheck = meshes[meshCannonPart].loadMesh("Meshes/Cannon_Part", flatShading);
 
+		gBoat = Boat(&meshes[meshBoat]);
+
 		//float3 s = terrain.getTerrainSize();
 		float3 scale(1,1,1);
 		
 		objects.appendCapacity(1000);
 
-		// Frustum cubes to more easily see the frustum
+		// Frustum cubes to more easily see the viewfrustum
 		for (int i = 0; i < 9; i++)
 		{
 			Object frustumCube;
@@ -686,6 +690,29 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 				player.updateRotation(mouseController.getMouseMovementThisFrame());
 				player.updateMovement(keyboardController.getState());
 				//player.updateCollisionWithTerrain(&terrain);
+
+
+				// Controll boat
+				float3 left;// = cameraForward.Cross(float3(0, 1, 0));
+				
+				float3 forward = XMVector3Transform(float4(0, 0, 1, 1), float4x4::CreateRotationY(cameraRotation.y));
+				left.Normalize();
+				float3 movement(0, 0, 0);
+				if (keyboardState.LeftShift) speed *= 2;//sprint
+				if (keyboardState.W) {
+					movement += forward * speed;
+				}
+				if (keyboardState.S) {
+					movement -= forward * speed;
+				}
+				if (keyboardState.A) {
+					movement += left * speed;
+				}
+				if (keyboardState.D) {
+					movement -= left * speed;
+				}
+
+
 
 					// Toggle showcase effects
 				// Changes view mode between 1:st and 3:rd person

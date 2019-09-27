@@ -94,6 +94,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Boat.cpp" />
     <ClCompile Include="Deferred.cpp" />
     <ClCompile Include="FullScreenQuad.cpp" />
     <ClCompile Include="LightManager.cpp" />
@@ -107,6 +108,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Array.h" />
+    <ClInclude Include="Boat.h" />
     <ClInclude Include="Deferred.h" />
     <ClInclude Include="FrontToBack.h" />
     <ClInclude Include="Frustum.h" />
