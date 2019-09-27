@@ -22,6 +22,7 @@ const int DEF_BUFFERCOUNT = 3;
 
 float deltaTime = 0;
 //någon ändring
+// en till ändring
 Array<Mesh> meshes;
 Array<Object> objects;
 Boat gBoat;
